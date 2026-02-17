@@ -17,12 +17,24 @@ public record UploadProperties(
     @NotEmpty(message = "Allowed MIME types must not be empty")
     List<String> allowedMimeTypes
 ) {
-  public static final long MAX_FILE_SIZE_10MB = 10 * 1024 * 1024;
-
   public boolean isFileSizeValid(long fileSizeBytes) {
     return fileSizeBytes > 0 && fileSizeBytes <= maxFileSizeBytes;
   }
 
+  /**
+   * Checks if the claimed MIME type is in the allowed list.
+   * <p>
+   * <strong>WARNING:</strong> This does NOT validate file content. This method only checks
+   * if the provided MIME type string matches one of the allowed types configured in
+   * {@code application.properties}.
+   * <p>
+   * Actual file content validation (magic bytes inspection) MUST be performed in the
+   * upload service layer to prevent security vulnerabilities. Per CLAUDE.md Upload Module rules:
+   * "Validate by file content (magic bytes), NOT by extension or Content-Type header"
+   *
+   * @param mimeType the MIME type string to check (typically from Content-Type header)
+   * @return {@code true} if the MIME type is in the allowed list, {@code false} otherwise
+   */
   public boolean isMimeTypeAllowed(String mimeType) {
     return mimeType != null && allowedMimeTypes.contains(mimeType);
   }
