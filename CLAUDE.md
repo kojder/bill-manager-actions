@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## CRITICAL Rules
 
-- **NEVER run `git push`** — the user will always push manually. This applies to all branches, including feature branches and master. No exceptions.
+- **NEVER run `git push` in local CLI** — the user will always push manually. This applies to all branches, including feature branches and master. No exceptions. This rule does NOT apply when running as GitHub Action — in that context, pushing to PR branches is allowed and expected.
 
 ## Language Rules
 
