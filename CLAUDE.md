@@ -4,7 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Language Rules
 
-- **Communication**: Always communicate with the user in **Polish**
+- **Local development (Claude Code CLI)**: Communicate with the user in **Polish**
+- **GitHub Actions context (code review, PR comments, issue responses)**: Always write in **English**
 - **Code**: All code identifiers (classes, methods, variables, constants) in **English**
 - **Documentation**: All documentation files (README, ./ai/ docs, code comments) in **English**
 - **Commits**: Conventional Commits format, messages in **English**
@@ -72,7 +73,7 @@ Every Groq API call must include:
 
 This repository uses Claude Code Actions (`anthropics/claude-code-action@v1`) for automated Code Review in CI pipelines. Claude reads this CLAUDE.md file automatically during review.
 
-**Note:** When running as GitHub Action for code review, write all review comments in **English**.
+**Note:** When running as GitHub Action for code review, always write in **English** (as specified in Language Rules).
 
 ### Review Scope (Global)
 
@@ -165,3 +166,8 @@ PR Created
 Pipeline is defined in `.github/workflows/`:
 - **ci.yml** — CI pipeline: checkstyle → test → claude-review (on every PR)
 - **claude.yml** — Interactive @claude mentions (on PRs and issues)
+
+## Related Repositories
+
+- **claude-code-action** (cloned locally): `/home/andrew/projects/review-actions/claude-code-action`
+  - Source: `anthropics/claude-code-action` — the GitHub Action used for automated code review in this project
