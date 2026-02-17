@@ -1,20 +1,18 @@
 package com.example.bill_manager.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.TestPropertySource;
 
 class ApiKeyValidatorTest {
 
   @Test
   void testValidApiKey() {
     ApiKeyValidator validator = new ApiKeyValidator();
-    // Use reflection to set the apiKey field
-    setApiKey(validator, "gsk_validKeyWith20PlusCharacters12345");
+    // Valid Groq API key format: gsk_ + 52 characters = 56 total
+    setApiKey(validator, "gsk_1234567890123456789012345678901234567890123456789012");
 
     assertDoesNotThrow(validator::validateApiKey);
   }
@@ -26,7 +24,7 @@ class ApiKeyValidatorTest {
 
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, validator::validateApiKey);
-    assert exception.getMessage().contains("GROQ_API_KEY environment variable must be set");
+    assertThat(exception.getMessage()).contains("GROQ_API_KEY environment variable must be set");
   }
 
   @Test
@@ -36,7 +34,7 @@ class ApiKeyValidatorTest {
 
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, validator::validateApiKey);
-    assert exception.getMessage().contains("GROQ_API_KEY environment variable must be set");
+    assertThat(exception.getMessage()).contains("GROQ_API_KEY environment variable must be set");
   }
 
   @Test
@@ -46,7 +44,7 @@ class ApiKeyValidatorTest {
 
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, validator::validateApiKey);
-    assert exception.getMessage().contains("placeholder value");
+    assertThat(exception.getMessage()).contains("placeholder value");
   }
 
   @Test
@@ -56,17 +54,17 @@ class ApiKeyValidatorTest {
 
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, validator::validateApiKey);
-    assert exception.getMessage().contains("placeholder value");
+    assertThat(exception.getMessage()).contains("placeholder value");
   }
 
   @Test
-  void testTooShortApiKey() {
+  void testInvalidFormatApiKey() {
     ApiKeyValidator validator = new ApiKeyValidator();
     setApiKey(validator, "short");
 
     IllegalStateException exception =
         assertThrows(IllegalStateException.class, validator::validateApiKey);
-    assert exception.getMessage().contains("too short");
+    assertThat(exception.getMessage()).contains("format is invalid");
   }
 
   private void setApiKey(ApiKeyValidator validator, String apiKey) {

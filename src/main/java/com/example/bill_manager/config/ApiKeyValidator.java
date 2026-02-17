@@ -29,19 +29,21 @@ public class ApiKeyValidator {
               + "Get your API key from: https://console.groq.com/keys");
     }
 
-    // Check for common placeholder values
-    if (apiKey.equals("your_groq_api_key_here")
-        || apiKey.startsWith("${")
-        || apiKey.equals("REPLACE_WITH_YOUR_ACTUAL_KEY")) {
+    // Check for common placeholder patterns without exposing actual key value
+    boolean isPlaceholder = apiKey.contains("your_groq_api_key")
+        || apiKey.contains("${")
+        || apiKey.contains("REPLACE_WITH");
+
+    if (isPlaceholder) {
       throw new IllegalStateException(
           "GROQ_API_KEY is set to a placeholder value. "
               + "Replace it with your actual API key from: https://console.groq.com/keys");
     }
 
-    // Basic format validation - Groq keys should have reasonable length
-    if (apiKey.length() < 20) {
+    // Groq API keys format: gsk_[52 characters] = 56 total length
+    if (!apiKey.startsWith("gsk_") || apiKey.length() != 56) {
       throw new IllegalStateException(
-          "GROQ_API_KEY appears to be invalid (too short). "
+          "GROQ_API_KEY format is invalid. Expected format: gsk_[52-characters]. "
               + "Please verify your API key from: https://console.groq.com/keys");
     }
   }
