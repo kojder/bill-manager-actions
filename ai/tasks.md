@@ -1,0 +1,239 @@
+# Implementation Task List: Bill-Manager
+
+## Rules
+
+- Each task = 1 branch → 1 Pull Request → test Claude Code Actions Review
+- Branch naming: `feat/task-{N}-{short-description}` or `chore/task-{N}-{description}`
+- Tests: each task includes appropriate unit/integration tests
+- DoD (Definition of Done): code compiles, tests pass, Checkstyle clean (from Task 3 onwards)
+
+---
+
+## Phase 0: Infrastructure
+
+### Task 1: Repository Initialization + Documentation
+
+**Description:** Git init, file cleanup, initial commit, push to GitHub. Create documentation in `./ai/`.
+
+**Scope:**
+- `git init` + initial commit
+- Files `./ai/prd.md`, `./ai/tech-stack.md`, `./ai/api-plan.md`, `./ai/tasks.md`
+- Update `CLAUDE.md` (slim down, add references to `./ai/`, add review guidelines)
+- Push to `git@github.com:kojder/bill-manager-actions.git`
+
+**Claude review:** None (initial commit on main, not a PR)
+
+**Size:** S
+
+---
+
+### Task 2: GitHub Actions CI Pipeline
+
+**Description:** Create CI workflow with jobs: checkstyle → test → claude-review. Configure JaCoCo for coverage reports.
+
+**Scope:**
+- New: `.github/workflows/ci.yml`
+- New: `.github/workflows/claude.yml` (interactive @claude mentions)
+- Modified: `pom.xml` (add JaCoCo plugin)
+
+**Claude review:** CLAUDE.md review section (global) — first PR, workflow quality verification
+
+**Expected review points:**
+- Correct workflow configuration
+- Proper job dependencies (checkstyle → test → claude-review)
+- JaCoCo integration
+
+**Size:** M
+
+---
+
+### Task 3: Checkstyle Configuration
+
+**Description:** Add Checkstyle configuration (Google Java Style), Maven plugin, format existing code.
+
+**Scope:**
+- New: `checkstyle.xml` (in root or `config/`)
+- Modified: `pom.xml` (add maven-checkstyle-plugin)
+- Modified: existing Java files (formatting to match Google Style)
+
+**Claude review:** CLAUDE.md review section (global)
+
+**Verification:** `./mvnw checkstyle:check` passes with zero violations
+
+**Size:** S
+
+---
+
+## Phase 1: Foundation (config/ + dto/)
+
+### Task 4: Application Configuration Module
+
+**Description:** Package `config/` with configuration classes for Groq API and upload. Parameters configured via `application.properties` and environment variables.
+
+**Scope:**
+- New: `src/main/java/.../config/GroqApiProperties.java` — timeout, retry (count, delay, multiplier), base-url, model
+- New: `src/main/java/.../config/UploadProperties.java` — max file size, allowed MIME types
+- Modified: `src/main/resources/application.properties` — default values
+- New: `src/main/resources/application-dev.properties` — development configuration
+- Tests: verify configuration loading
+
+**Claude review:** **CLAUDE.md Config Module review rules**
+
+**Expected review points:**
+- [ ] No hardcoded API keys or secrets
+- [ ] Configurable URLs and timeouts
+- [ ] Environment separation (properties vs env vars)
+- [ ] No secrets in logs
+
+**Size:** M
+
+---
+
+### Task 5: Data Models (DTOs)
+
+**Description:** Java Records for all DTOs as defined in `api-plan.md`.
+
+**Scope:**
+- New: `src/main/java/.../dto/BillAnalysisResult.java`
+- New: `src/main/java/.../dto/BillAnalysisResponse.java`
+- New: `src/main/java/.../dto/LineItem.java`
+- New: `src/main/java/.../dto/ErrorResponse.java`
+- Tests: JSON serialization/deserialization
+
+**Claude review:** CLAUDE.md review section (global)
+
+**Expected review points:**
+- [ ] Java Records used (not classes)
+- [ ] Validation annotations where needed
+
+**Size:** S
+
+---
+
+## Phase 2: Upload Module (upload/)
+
+### Task 6: File Validation
+
+**Description:** File validation service: MIME type by content (magic bytes), size limit, filename sanitization.
+
+**Scope:**
+- New: `src/main/java/.../upload/FileValidationService.java` (interface)
+- New: `src/main/java/.../upload/FileValidationServiceImpl.java` (implementation)
+- Tests: various file types (valid/invalid MIME), oversized file, malicious filename (`../../etc/passwd`)
+
+**Claude review:** **CLAUDE.md Upload Module review rules**
+
+**Expected review points:**
+- [ ] MIME validation by file content (magic bytes), not by extension
+- [ ] Size check BEFORE loading entire file into memory
+- [ ] Path traversal protection (sanitize `..`, path separators)
+- [ ] Whitelist of allowed MIME types
+
+**Size:** M
+
+---
+
+### Task 7: Upload REST Controller + Error Handling
+
+**Description:** Controller with endpoints `POST /api/bills/upload` and `GET /api/bills/{id}`. Global exception handler with `@ControllerAdvice`.
+
+**Scope:**
+- New: `src/main/java/.../upload/BillUploadController.java`
+- New: `src/main/java/.../exception/GlobalExceptionHandler.java`
+- Tests: MockMvc — upload valid/invalid file, retrieve result, 404, error formats
+
+**Claude review:** **CLAUDE.md Upload Module review rules**
+
+**Expected review points:**
+- [ ] Correct REST conventions (HTTP codes, Content-Type)
+- [ ] Input validation at controller level
+- [ ] Standardized error responses (ErrorResponse)
+- [ ] No internal stacktraces exposed to users
+
+**Size:** M
+
+---
+
+### Task 8: Image Preprocessing
+
+**Description:** Service for preparing images before sending to LLM: resize to max 1200px width, strip EXIF metadata.
+
+**Scope:**
+- New: `src/main/java/.../upload/ImagePreprocessingService.java` (interface)
+- New: `src/main/java/.../upload/ImagePreprocessingServiceImpl.java` (implementation)
+- Tests: images of various sizes (smaller/larger than 1200px), with/without EXIF, dimension verification after resize
+
+**Claude review:** **CLAUDE.md Upload Module review rules**
+
+**Expected review points:**
+- [ ] Resize to max 1200px preserving aspect ratio
+- [ ] EXIF metadata stripped
+- [ ] Multiple format support (JPEG, PNG)
+- [ ] PDF passthrough (PDFs are not preprocessed)
+
+**Size:** M
+
+---
+
+## Phase 3: AI Module (ai/) + Integration
+
+### Task 9: AI Analysis Service (Groq via Spring AI)
+
+**Description:** Core bill analysis service with LLM. ChatClient from Spring AI, timeout, retry with Exponential Backoff, Structured Output (BeanOutputConverter), graceful degradation.
+
+**Scope:**
+- New: `src/main/java/.../ai/BillAnalysisService.java` (interface)
+- New: `src/main/java/.../ai/BillAnalysisServiceImpl.java` (implementation)
+- Modified: `pom.xml` (spring-boot-starter-aop for @Retryable, if missing)
+- Tests: mocked ChatClient — success, timeout, retry behavior, fallback, structured output parsing
+
+**Claude review:** **CLAUDE.md AI Module review rules** — KEY TASK
+
+**Expected review points:**
+- [ ] Explicit timeout on every Groq API call (30s)
+- [ ] Retry with Exponential Backoff (1s initial, 3 retries, 2x multiplier)
+- [ ] Prompt size validation before sending
+- [ ] Response token limits in options
+- [ ] Catch ChatClientException and subtypes
+- [ ] Fallback behavior when LLM unavailable
+- [ ] No raw API errors exposed to users
+- [ ] BeanOutputConverter or equivalent for structured output
+- [ ] Parsed output validation before returning
+
+**Size:** L
+
+---
+
+### Task 10: End-to-End Integration + Simple UI
+
+**Description:** Connect the entire flow: upload → validation → preprocessing → AI analysis → result. In-memory storage, health endpoint, simple HTML upload form.
+
+**Scope:**
+- Modified: `BillUploadController.java` — orchestrate full flow
+- New: `src/main/java/.../upload/InMemoryResultStore.java` — ConcurrentHashMap storage
+- New: `src/main/resources/static/index.html` — simple upload form (no framework, served by Spring Boot)
+- New: health endpoint (`GET /api/health`)
+- Tests: integration test of the full flow with mocked Groq API
+
+**Claude review:** CLAUDE.md review section (global) + potentially AI Module and Upload Module review rules
+
+**Expected review points:**
+- [ ] Correct component orchestration
+- [ ] Thread-safe storage (ConcurrentHashMap)
+- [ ] Temporary resource cleanup
+- [ ] Integration test covers happy path and error paths
+
+**Size:** L
+
+---
+
+## Claude Code Actions Review Mapping
+
+| CLAUDE.md review section | Tasks | Key review points |
+|--------------------------|-------|-------------------|
+| Global review scope | 2, 3, 5, 10 | Architecture, Records, REST conventions |
+| Config Module rules | 4 | Secrets, env separation, configurable URLs |
+| Upload Module rules | 6, 7, 8 | MIME validation, size limits, path traversal, preprocessing |
+| AI Module rules | 9 | Timeout, retry, exponential backoff, structured output |
+
+**Coverage:** Each review rule set exercised in at least 1 PR.
