@@ -2,6 +2,7 @@ package com.example.bill_manager.config;
 
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 /**
@@ -10,8 +11,11 @@ import org.springframework.stereotype.Component;
  * This prevents the application from starting with placeholder or missing API keys,
  * enforcing the security requirement from CLAUDE.md:
  * "NEVER allow hardcoded API keys, passwords, tokens. No default values for sensitive properties"
+ * <p>
+ * Note: This validator is disabled in test profile to allow tests to run with mock API keys.
  */
 @Component
+@Profile("!test")
 public class ApiKeyValidator {
 
   @Value("${spring.ai.openai.api-key}")
