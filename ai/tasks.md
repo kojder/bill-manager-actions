@@ -11,7 +11,9 @@
 
 ## Phase 0: Infrastructure
 
-### Task 1: Repository Initialization + Documentation
+### Task 1: Repository Initialization + Documentation ✅ COMPLETED
+
+**Status:** Committed to master (initial setup)
 
 **Description:** Git init, file cleanup, initial commit, push to GitHub. Create documentation in `./ai/`.
 
@@ -27,7 +29,9 @@
 
 ---
 
-### Task 2: GitHub Actions CI Pipeline
+### Task 2: GitHub Actions CI Pipeline ✅ COMPLETED
+
+**Status:** Merged to master (PR #1)
 
 **Description:** Create CI workflow with jobs: checkstyle → test → claude-review. Configure JaCoCo for coverage reports.
 
@@ -47,12 +51,14 @@
 
 ---
 
-### Task 3: Checkstyle Configuration
+### Task 3: Checkstyle Configuration ✅ COMPLETED
+
+**Status:** Merged to master (part of PR #1)
 
 **Description:** Add Checkstyle configuration (Google Java Style), Maven plugin, format existing code.
 
 **Scope:**
-- New: `checkstyle.xml` (in root or `config/`)
+- New: `checkstyle.xml` (in root)
 - Modified: `pom.xml` (add maven-checkstyle-plugin)
 - Modified: existing Java files (formatting to match Google Style)
 
@@ -66,13 +72,16 @@
 
 ## Phase 1: Foundation (config/ + dto/)
 
-### Task 4: Application Configuration Module
+### Task 4: Application Configuration Module ✅ COMPLETED
+
+**Status:** Merged to master (PR #3)
 
 **Description:** Package `config/` with configuration classes for Groq API and upload. Parameters configured via `application.properties` and environment variables.
 
 **Scope:**
 - New: `src/main/java/.../config/GroqApiProperties.java` — timeout, retry (count, delay, multiplier), base-url, model
 - New: `src/main/java/.../config/UploadProperties.java` — max file size, allowed MIME types
+- New: `src/main/java/.../config/ApiKeyValidator.java` — fail-fast validation on startup
 - Modified: `src/main/resources/application.properties` — default values
 - New: `src/main/resources/application-dev.properties` — development configuration
 - Tests: verify configuration loading
@@ -80,10 +89,16 @@
 **Claude review:** **CLAUDE.md Config Module review rules**
 
 **Expected review points:**
-- [ ] No hardcoded API keys or secrets
-- [ ] Configurable URLs and timeouts
-- [ ] Environment separation (properties vs env vars)
-- [ ] No secrets in logs
+- [x] No hardcoded API keys or secrets
+- [x] Configurable URLs and timeouts
+- [x] Environment separation (properties vs env vars)
+- [x] No secrets in logs
+
+**Implementation notes:**
+- Added `ApiKeyValidator` with `@PostConstruct` for fail-fast startup validation
+- API key format validation: `gsk_` prefix + 56 characters total
+- Temperature set to 0.3 for optimal bill analysis
+- Custom properties for timeout & retry configuration (Exponential Backoff)
 
 **Size:** M
 
