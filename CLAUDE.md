@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## CRITICAL Rules
+
+- **NEVER run `git push`** — the user will always push manually. This applies to all branches, including feature branches and master. No exceptions.
+
 ## Language Rules
 
 - **Local development (Claude Code CLI)**: Communicate with the user in **Polish**
