@@ -49,6 +49,63 @@ The primary purpose of this repository is testing Claude Code Actions (`anthropi
 
 For detailed technology stack and module structure, see `./ai/tech-stack.md`.
 
+## Development Workflow & Best Practices
+
+### SOLID Principles
+
+Always adhere to SOLID principles in software design:
+
+- **S**ingle Responsibility Principle: Each class should have one reason to change
+  - Example: `FileValidationService` only validates files, doesn't process them
+- **O**pen/Closed Principle: Open for extension, closed for modification
+  - Example: Use interfaces (`BillAnalysisService`) so implementations can be swapped
+- **L**iskov Substitution Principle: Subtypes must be substitutable for their base types
+  - Example: Any `BillAnalysisService` implementation must honor the contract
+- **I**nterface Segregation Principle: Many client-specific interfaces are better than one general-purpose interface
+  - Example: Separate `FileValidationService` and `ImagePreprocessingService` instead of one `FileService`
+- **D**ependency Inversion Principle: Depend on abstractions, not concretions
+  - Example: Controllers depend on service interfaces, not concrete implementations
+
+### Decision-Making: The 1-3-1 Rule
+
+When stuck or unsure how to proceed:
+
+1. **State 1 clearly defined problem**
+2. **Propose 3 concrete options** to solve it
+3. **Give 1 recommendation** (pick one option and explain why)
+
+**CRITICAL**: Do NOT implement any option until user confirms which one to proceed with.
+
+### DRY Principle (Don't Repeat Yourself)
+
+DRY is critical. Avoid duplicated logic and repeated code.
+
+- If you're about to copy/paste similar code, **STOP** and reconsider the design
+- Refactor often: extract shared helpers/utilities/modules so changes happen in one place
+- Example: Don't duplicate MIME validation logic - create one `FileValidationService` and reuse it
+- Spring Boot examples: Use `@ConfigurationProperties` instead of repeating `@Value` annotations
+
+### Continuous Learning Loop
+
+When you detect any of the following:
+- Conflicting instructions or patterns
+- New requirements or architectural changes
+- Missing/inaccurate documentation or unclear conventions
+
+Then:
+1. **Propose a specific update** to the relevant rules/context/docs (CLAUDE.md, ./ai/ docs)
+2. **Do NOT apply the update** until user confirms
+3. **Ask clarifying questions** when needed
+4. **After the rules update**, retry the original task from before the mistake
+
+### Plan-First Approach
+
+For any complex, multi-step task:
+
+1. **Before writing code**, create a short plan and a checklist/todo list (use TodoWrite tool)
+2. **Execute step-by-step**, keeping the list updated so you don't drift off track
+3. **Mark tasks as completed** immediately after finishing them (don't batch completions)
+
 ## Code Conventions
 
 ### DTOs and Data Classes
