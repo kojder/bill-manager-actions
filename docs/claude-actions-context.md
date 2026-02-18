@@ -130,7 +130,15 @@ This project uses two workflow configurations:
 
 ### `ci.yml` — Automated Code Review
 
-Triggers on every PR (`pull_request` event). Runs after Checkstyle and tests pass. Claude reviews the PR diff and posts comments automatically.
+Triggers on every PR (`pull_request` event). Job dependency chain:
+
+1. **Enrich PR Description** — Extracts task number from branch name (`feat/task-{N}-...`), parses task context from `./ai/tasks.md`, and injects it into the PR body via `<!-- TASK_PLACEHOLDER -->`. Runs on `opened` or when the `rerun` label is added. Gracefully handles missing task numbers (inserts warning).
+2. **Checkstyle** — Runs after enrich succeeds or is skipped (on `synchronize` events). Blocks pipeline on failure.
+3. **Unit Tests** — Runs after Checkstyle passes.
+4. **Claude Code Review** — Runs after tests pass. Claude reads the enriched PR description for task context and expected review points.
+5. **Cleanup** — Removes the `rerun` label after the pipeline completes (only on `rerun`-triggered runs).
+
+**Re-running the pipeline:** Add the `rerun` label to a PR to trigger the full pipeline including enrichment. The label is auto-removed after completion, allowing re-use.
 
 ### `claude.yml` — Interactive Assistant
 

@@ -203,11 +203,17 @@ Every Groq API call MUST have:
 ## Pre-Review Automation Pipeline
 
 ```
-PR Created
+PR Created / "rerun" label added
     │
     ▼
+┌──────────────────┐     fail
+│ Enrich PR Desc.  │ ──────────► Pipeline STOP
+│ (opened/rerun)   │  (skipped on synchronize = OK)
+└─────┬────────────┘
+      │ pass/skip
+      ▼
 ┌─────────────┐     fail
-│  Checkstyle │ ──────────► Pipeline STOP (no Claude review)
+│  Checkstyle │ ──────────► Pipeline STOP
 └─────┬───────┘
       │ pass
       ▼
@@ -219,6 +225,12 @@ PR Created
 ┌───────────────────┐
 │  Claude Code      │ ──────────► Focus: Logic, Architecture, Context
 │  Actions Review   │
+└───────────────────┘
+      │
+      ▼
+┌───────────────────┐
+│ Cleanup: remove   │  (only on "rerun" label trigger)
+│ "rerun" label     │
 └───────────────────┘
 ```
 
@@ -233,10 +245,15 @@ This convention is used by the `enrich-description` job in `ci.yml` to automatic
 - `chore/task-11-pr-enrich` → extracts task number 11
 - `feat/PROJ-1234-description` → no task number extracted (Jira format, future support)
 
+### Re-running the Full Pipeline
+
+Add the `rerun` label to a PR to trigger the full pipeline (including PR description enrichment). The label is automatically removed after the pipeline completes, allowing re-use.
+
 ### GitHub Actions Workflows
 
 Pipeline is defined in `.github/workflows/`:
 - **ci.yml** — CI pipeline: enrich-description → checkstyle → test → claude-review (on every PR)
+  - Triggers: `opened`, `synchronize`, `ready_for_review`, `reopened`, `labeled` (rerun only)
 - **claude.yml** — Interactive @claude mentions (on PRs and issues)
 
 ## Related Repositories

@@ -10,74 +10,100 @@ Build an application for automated bill analysis (images/PDF) using LLMs (Groq) 
 
 - **Runtime**: Java 17, Spring Boot 3.5.x
 - **Spring AI** (OpenAI Starter): Communication with Groq API (OpenAI protocol compatibility)
-- **Image Processing**: imgscalr or java.awt for optimizing image dimensions before LLM submission
-- **Persistence**: Integration with a local Supabase instance (PostgreSQL + PostgREST)
+- **Image Processing**: java.awt for optimizing image dimensions before LLM submission
+- **Storage**: In-memory (ConcurrentHashMap) — POC scope, no external database
 - **Principles**: SOLID, Clean Code, Java 17 best practices
 
 ### Frontend (Web)
 
-- Simple "Localhost First" interface
-- Drag & Drop functionality for PDF files and images (JPG/PNG)
+- Simple static HTML upload form (no framework, served by Spring Boot)
 
 ### AI & Data Infrastructure
 
-- **LLM**: Groq (Llama 3 / Mixtral models) – content analysis and data extraction to JSON
-- **Storage**: Supabase (local Docker container)
+- **LLM**: Groq (via Spring AI ChatClient) — content analysis and data extraction to JSON
 
 ## 3. Application Workflow
 
-1. **Upload**: User uploads a file via the browser
-2. **Pre-processing**: Backend verifies MIME type and scales the image to optimal dimensions (e.g., 1200px width) to save tokens/costs
-3. **AI Analysis**:
-   - Utilize `ChatModel` interface (Spring AI)
-   - Prompt enforcing Structured Output (extraction of: items, unit prices, total amount, category tags)
-4. **Storage**: Save raw JSON output to Supabase
+1. **Upload**: User uploads a file via browser or REST API (`POST /api/bills/upload`)
+2. **Validation**: MIME type validation by file content (magic bytes), size limit (10MB), filename sanitization
+3. **Pre-processing**: Scale image to max 1200px width, strip EXIF metadata
+4. **AI Analysis**: Spring AI `ChatClient` with Structured Output (extraction of: items, unit prices, total amount, category tags)
+5. **Result**: JSON response with analysis result, retrievable via `GET /api/bills/{id}`
 
-## 4. Automated Code Review Strategy (Claude Code Actions)
+## 4. CI Pipeline & Automated Code Review
 
-The primary goal is to configure the repository so that Claude acts as a Senior Developer, ignoring trivial formatting issues.
+### Pipeline Flow
 
-### A. Noise Filtering (CI Pipeline)
+```
+PR Created / "rerun" label added
+    │
+    ▼
+Enrich PR Description (task context from ai/tasks.md)
+    │
+    ▼
+Checkstyle (Google Java Style)
+    │
+    ▼
+Unit Tests (JUnit 5 + JaCoCo)
+    │
+    ▼
+Claude Code Actions Review (logic, architecture, security)
+    │
+    ▼
+Cleanup (auto-remove "rerun" label)
+```
 
-To ensure Claude does not focus on syntax, the GitHub Actions pipeline must include:
+### PR Description Enrichment
 
-- **Linter/Checkstyle**: Automated formatting check. If Checkstyle fails, the pipeline terminates before invoking Claude
-- **SonarQube**: Static analysis for technical debt and security
-- **Unit Tests**: Requirement of min. 80% coverage for business logic (scaling, JSON mapping)
+The `enrich-description` job automatically populates the PR description with task context from `./ai/tasks.md` based on the branch name. Requires branch naming convention: `feat/task-{N}-description` or `chore/task-{N}-description`.
 
-### B. Context Management (`CLAUDE.md`)
+### Re-running the Pipeline
+
+Add the `rerun` label to a PR to trigger the full pipeline including PR description enrichment. The label is automatically removed after the pipeline completes.
+
+### Context Management (`CLAUDE.md`)
 
 Claude Code Action reads `CLAUDE.md` automatically from the repository root. Review instructions include:
 
-- **Scope**: Skip formatting issues (handled by linter). Focus on logical errors, security vulnerabilities, and API performance
+- **Scope**: Skip formatting issues (handled by Checkstyle). Focus on logical errors, security vulnerabilities, and API design
 - **Architecture**: Require Java Records for DTOs and Spring AI interfaces instead of direct HTTP clients
-- **Security**: Ensure Groq/Supabase API keys are neither logged nor hardcoded
+- **Security**: Ensure API keys are neither logged nor hardcoded
 
-### C. Path-specific Review Rules
+### Path-specific Review Rules
 
 Path-specific review rules are defined in `CLAUDE.md` under "Path-Specific Review Rules":
 
 | Path Pattern | Review Focus |
 |-------------|--------------|
-| `**/ai/**` | Timeout, Retry (Exponential Backoff), token limits |
-| `**/upload/**` | MIME validation, file size limits, path traversal |
+| `**/ai/**` | Timeout, Retry (Exponential Backoff), token limits, structured output |
+| `**/upload/**` | MIME validation (magic bytes), file size limits, path traversal |
 | `**/config/**` | Secrets exposure, hardcoded values, env separation |
 
-## 5. start.spring.io Configuration
+## 5. Project Setup
 
 - **Project**: Maven
 - **Language**: Java 17
 - **Spring Boot**: 3.5.x
-- **Dependencies**:
-  - Lombok
-  - Spring Boot DevTools
-  - Spring Web
-  - OpenAI (Spring AI)
-  - Validation
+- **Dependencies**: Spring Web, Spring AI (OpenAI), Validation, Lombok, DevTools, Actuator
 
-## 6. Milestones
+```bash
+# Build
+./mvnw clean compile
 
-1. **Milestone 1**: Repository initialization, Checkstyle configuration, and `CLAUDE.md` review guidelines setup
-2. **Milestone 2**: Implementation of Upload and Image Processing modules (SOLID). First PR to test Claude's response to logical errors vs. style issues
-3. **Milestone 3**: Spring AI (Groq) integration and Structured Output implementation
-4. **Milestone 4**: Supabase integration and finalization of CI/CD pipeline with "Gated Code Review"
+# Run tests
+./mvnw test
+
+# Run Checkstyle
+./mvnw checkstyle:check
+
+# Run application
+./mvnw spring-boot:run
+```
+
+## 6. Documentation
+
+- `./ai/prd.md` — Product requirements, user stories, MVP scope
+- `./ai/tech-stack.md` — Technology stack, architecture, module structure
+- `./ai/api-plan.md` — REST API plan, data models, error codes
+- `./ai/tasks.md` — Implementation task list with review mapping
+- `./docs/claude-actions-context.md` — Claude Code Actions context management

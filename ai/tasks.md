@@ -104,7 +104,9 @@
 
 ---
 
-### Task 5: Data Models (DTOs)
+### Task 5: Data Models (DTOs) ✅ COMPLETED
+
+**Status:** Merged to master (PR #4)
 
 **Description:** Java Records for all DTOs as defined in `api-plan.md`.
 
@@ -113,13 +115,20 @@
 - New: `src/main/java/.../dto/BillAnalysisResponse.java`
 - New: `src/main/java/.../dto/LineItem.java`
 - New: `src/main/java/.../dto/ErrorResponse.java`
-- Tests: JSON serialization/deserialization
+- Tests: JSON serialization/deserialization + validation constraint tests
 
 **Claude review:** CLAUDE.md review section (global)
 
 **Expected review points:**
-- [ ] Java Records used (not classes)
-- [ ] Validation annotations where needed
+- [x] Java Records used (not classes)
+- [x] Validation annotations where needed
+
+**Implementation notes:**
+- All DTOs implemented as Java Records with Jakarta Validation annotations
+- `@PositiveOrZero` on prices (allows free/discounted items), `@Positive` on quantity
+- `UUID` type for `BillAnalysisResponse.id` (type-safe vs String)
+- `categoryTags` in `BillAnalysisResult` is nullable (LLM may not return tags)
+- Code review findings addressed: `@Positive` → `@PositiveOrZero`, `String id` → `UUID id`, added `ValidationTest`
 
 **Size:** S
 
@@ -246,17 +255,26 @@
 
 ### Task 11: PR Enrich — tasks.md Integration ✅ COMPLETED
 
-**Status:** Committed (part of PR template setup)
+**Status:** Merged to master (PR #4 included CI fixes)
 
-**Description:** Enrich PR description job integrated into CI pipeline (`ci.yml`). Extracts task number from branch name (`feat/task-{N}-...`), parses task details from `./ai/tasks.md`, and injects them into the PR body via placeholder. Runs only on PR `opened` event. Claude review job depends on it (`needs: [enrich-description, test]`) to ensure enriched description is available during review.
+**Description:** Enrich PR description job integrated into CI pipeline (`ci.yml`). Extracts task number from branch name (`feat/task-{N}-...`), parses task details from `./ai/tasks.md`, and injects them into the PR body via placeholder. Triggers on PR `opened` event or when `rerun` label is added. Job dependency chain: enrich → checkstyle → test → claude-review.
 
 **Scope:**
-- Modified: `.github/workflows/ci.yml` — added `enrich-description` job as first step, updated `claude-review` dependencies and prompt
+- Modified: `.github/workflows/ci.yml` — added `enrich-description` job, job dependency chain, `rerun` label trigger, `cleanup-label` job
 - New: `.github/pull_request_template.md` — PR template with `<!-- TASK_PLACEHOLDER -->` marker and review evaluation sections
+- New: GitHub label `rerun` — triggers full pipeline re-run including enrich
+
+**Implementation notes:**
+- Task content written to temp file + python3 for safe placeholder replacement (avoids bash shell interpolation of markdown)
+- `gh pr edit --body-file` for safe PR body update
+- Graceful warnings when: no task number in branch name, `tasks.md` not found, task not found in file
+- `rerun` label auto-removed by `cleanup-label` job after pipeline completes
+- `checkstyle` runs when enrich succeeds or is skipped (synchronize event), blocks on failure
+- Random labels (other than `rerun`) do not trigger the pipeline
 
 **Claude review:** CLAUDE.md review section (global) — workflow quality, script correctness
 
-**Size:** S
+**Size:** M
 
 ---
 
