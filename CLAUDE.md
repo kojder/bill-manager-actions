@@ -222,10 +222,21 @@ PR Created
 └───────────────────┘
 ```
 
+### Branch Naming Convention
+
+**Required format:** `feat/task-{N}-{short-description}` or `chore/task-{N}-{description}`
+
+This convention is used by the `enrich-description` job in `ci.yml` to automatically extract the task number from the branch name and populate the PR description with task context from `./ai/tasks.md`. The regex `task-([0-9]+)` is used for extraction.
+
+**Examples:**
+- `feat/task-5-data-models` → extracts task number 5
+- `chore/task-11-pr-enrich` → extracts task number 11
+- `feat/PROJ-1234-description` → no task number extracted (Jira format, future support)
+
 ### GitHub Actions Workflows
 
 Pipeline is defined in `.github/workflows/`:
-- **ci.yml** — CI pipeline: checkstyle → test → claude-review (on every PR)
+- **ci.yml** — CI pipeline: enrich-description → checkstyle → test → claude-review (on every PR)
 - **claude.yml** — Interactive @claude mentions (on PRs and issues)
 
 ## Related Repositories

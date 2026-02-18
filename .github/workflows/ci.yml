@@ -2,12 +2,14 @@ name: CI Pipeline
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
+    types: [opened, synchronize, ready_for_review, reopened, labeled]
 
 jobs:
   enrich-description:
     name: Enrich PR Description
-    if: github.event.action == 'opened'
+    if: >-
+      github.event.action == 'opened' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'rerun')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,19 +29,33 @@ jobs:
             echo "task_number=" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Parse task from tasks.md
-        if: steps.extract.outputs.task_number != ''
-        id: parse
+      - name: Build task content
+        id: build
         run: |
           TASK_NUM="${{ steps.extract.outputs.task_number }}"
-          TASKS_FILE="./ai/tasks.md"
+          BRANCH="${{ github.head_ref }}"
 
-          if [ ! -f "$TASKS_FILE" ]; then
-            echo "tasks.md not found"
+          if [ -z "$TASK_NUM" ]; then
+            cat > /tmp/task_content.md <<EOF
+          > **Warning:** No task number detected in branch name \`${BRANCH}\`.
+          > Expected format: \`feat/task-{N}-description\` or \`chore/task-{N}-description\`.
+          > Fill in the Task Reference section manually if needed.
+          EOF
+            echo "has_content=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          SECTION=$(awk -v num="$TASK_NUM" '
+          TASKS_FILE="./ai/tasks.md"
+
+          if [ ! -f "$TASKS_FILE" ]; then
+            cat > /tmp/task_content.md <<EOF
+          > **Warning:** \`ai/tasks.md\` not found. Cannot auto-populate task reference.
+          EOF
+            echo "has_content=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          SECTION=$(awk '
             /^### Task '"$TASK_NUM"':/ { found=1; next }
             found && /^### Task [0-9]+:/ { found=0 }
             found && /^---$/ { found=0 }
@@ -48,7 +64,10 @@ jobs:
           ' "$TASKS_FILE")
 
           if [ -z "$SECTION" ]; then
-            echo "Task $TASK_NUM not found in tasks.md"
+            cat > /tmp/task_content.md <<EOF
+          > **Warning:** Task $TASK_NUM not found in \`ai/tasks.md\`.
+          EOF
+            echo "has_content=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -63,58 +82,65 @@ jobs:
           EXPECTED=$(echo "$SECTION" | awk '/^\*\*Expected review points:\*\*/{flag=1; next} flag && /^- \[/{print} flag && !/^- \[/ && !/^$/{flag=0}')
 
           {
-            echo "task_title=$TITLE"
-            echo "has_content=true"
-          } >> "$GITHUB_OUTPUT"
+            echo "### Task ${TASK_NUM}: ${TITLE}"
+            echo ""
+            if [ -n "$DESCRIPTION" ]; then
+              echo "**Description:** ${DESCRIPTION}"
+              echo ""
+            fi
+            if [ -n "$SCOPE" ]; then
+              echo "**Scope:**"
+              echo "${SCOPE}"
+              echo ""
+            fi
+            if [ -n "$REVIEW_RULES" ]; then
+              echo "**Claude review:** ${REVIEW_RULES}"
+              echo ""
+            fi
+            if [ -n "$EXPECTED" ]; then
+              echo "**Expected review points:**"
+              echo "${EXPECTED}"
+            fi
+          } > /tmp/task_content.md
 
-          BODY=""
-          BODY+="### Task ${TASK_NUM}: ${TITLE}"$'\n\n'
-
-          if [ -n "$DESCRIPTION" ]; then
-            BODY+="**Description:** ${DESCRIPTION}"$'\n\n'
-          fi
-
-          if [ -n "$SCOPE" ]; then
-            BODY+="**Scope:**"$'\n'
-            BODY+="${SCOPE}"$'\n\n'
-          fi
-
-          if [ -n "$REVIEW_RULES" ]; then
-            BODY+="**Claude review:** ${REVIEW_RULES}"$'\n\n'
-          fi
-
-          if [ -n "$EXPECTED" ]; then
-            BODY+="**Expected review points:**"$'\n'
-            BODY+="${EXPECTED}"$'\n'
-          fi
-
-          EOF_MARKER=$(openssl rand -hex 16)
-          {
-            echo "task_body<<${EOF_MARKER}"
-            echo "$BODY"
-            echo "${EOF_MARKER}"
-          } >> "$GITHUB_OUTPUT"
+          echo "has_content=true" >> "$GITHUB_OUTPUT"
 
       - name: Update PR description
-        if: steps.parse.outputs.has_content == 'true'
+        if: steps.build.outputs.has_content == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           PR_NUM="${{ github.event.pull_request.number }}"
-          CURRENT_BODY=$(gh pr view "$PR_NUM" --json body --jq '.body')
 
-          TASK_CONTENT="${{ steps.parse.outputs.task_body }}"
+          gh pr view "$PR_NUM" --json body --jq '.body' > /tmp/current_body.md
 
-          if echo "$CURRENT_BODY" | grep -q '<!-- TASK_PLACEHOLDER -->'; then
-            UPDATED_BODY="${CURRENT_BODY//<!-- TASK_PLACEHOLDER -->/$TASK_CONTENT}"
-            gh pr edit "$PR_NUM" --body "$UPDATED_BODY"
-            echo "PR description enriched with Task ${{ steps.extract.outputs.task_number }} details"
-          else
-            echo "No TASK_PLACEHOLDER found in PR body, skipping"
+          python3 -c "
+          with open('/tmp/current_body.md', 'r') as f:
+              body = f.read()
+          with open('/tmp/task_content.md', 'r') as f:
+              replacement = f.read()
+          placeholder = '<!-- TASK_PLACEHOLDER -->'
+          if placeholder in body:
+              body = body.replace(placeholder, replacement)
+              with open('/tmp/new_body.md', 'w') as f:
+                  f.write(body)
+              print('Placeholder found and replaced')
+          else:
+              print('No TASK_PLACEHOLDER found in PR body (already enriched or missing), skipping')
+          "
+
+          if [ -f /tmp/new_body.md ]; then
+            gh pr edit "$PR_NUM" --body-file /tmp/new_body.md
+            echo "PR description enriched successfully"
           fi
 
   checkstyle:
     name: Checkstyle
+    needs: enrich-description
+    if: >-
+      always() &&
+      needs.enrich-description.result != 'failure' &&
+      (github.event.action != 'labeled' || github.event.label.name == 'rerun')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -148,8 +174,7 @@ jobs:
 
   claude-review:
     name: Claude Code Review
-    needs: [enrich-description, test]
-    if: always() && needs.test.result == 'success'
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -187,3 +212,20 @@ jobs:
             Post a top-level PR comment with an overall summary.
           claude_args: |
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+
+  cleanup-label:
+    name: Remove rerun label
+    needs: [enrich-description, checkstyle, test, claude-review]
+    if: always() && github.event.action == 'labeled' && github.event.label.name == 'rerun'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Remove rerun label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --remove-label "rerun" \
+            --repo "${{ github.repository }}"
+          echo "Removed 'rerun' label from PR #${{ github.event.pull_request.number }}"
