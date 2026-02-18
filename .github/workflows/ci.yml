@@ -5,6 +5,114 @@ on:
     types: [opened, synchronize, ready_for_review, reopened]
 
 jobs:
+  enrich-description:
+    name: Enrich PR Description
+    if: github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract task number from branch name
+        id: extract
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          if [[ "$BRANCH" =~ task-([0-9]+) ]]; then
+            echo "task_number=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+            echo "Found task number: ${BASH_REMATCH[1]} in branch: $BRANCH"
+          else
+            echo "No task number found in branch: $BRANCH"
+            echo "task_number=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Parse task from tasks.md
+        if: steps.extract.outputs.task_number != ''
+        id: parse
+        run: |
+          TASK_NUM="${{ steps.extract.outputs.task_number }}"
+          TASKS_FILE="./ai/tasks.md"
+
+          if [ ! -f "$TASKS_FILE" ]; then
+            echo "tasks.md not found"
+            exit 0
+          fi
+
+          SECTION=$(awk -v num="$TASK_NUM" '
+            /^### Task '"$TASK_NUM"':/ { found=1; next }
+            found && /^### Task [0-9]+:/ { found=0 }
+            found && /^---$/ { found=0 }
+            found && /^## / { found=0 }
+            found { print }
+          ' "$TASKS_FILE")
+
+          if [ -z "$SECTION" ]; then
+            echo "Task $TASK_NUM not found in tasks.md"
+            exit 0
+          fi
+
+          TITLE=$(grep -oP "^### Task ${TASK_NUM}: \K.*" "$TASKS_FILE" | sed 's/ ✅ COMPLETED//')
+
+          DESCRIPTION=$(echo "$SECTION" | awk '/^\*\*Description:\*\*/{flag=1; sub(/\*\*Description:\*\* */,""); print; next} flag && /^\*\*/{flag=0} flag{print}')
+
+          SCOPE=$(echo "$SECTION" | awk '/^\*\*Scope:\*\*/{flag=1; next} flag && /^- /{print} flag && !/^- / && !/^$/{flag=0}')
+
+          REVIEW_RULES=$(echo "$SECTION" | grep -oP '^\*\*Claude review:\*\* \K.*' || true)
+
+          EXPECTED=$(echo "$SECTION" | awk '/^\*\*Expected review points:\*\*/{flag=1; next} flag && /^- \[/{print} flag && !/^- \[/ && !/^$/{flag=0}')
+
+          {
+            echo "task_title=$TITLE"
+            echo "has_content=true"
+          } >> "$GITHUB_OUTPUT"
+
+          BODY=""
+          BODY+="### Task ${TASK_NUM}: ${TITLE}"$'\n\n'
+
+          if [ -n "$DESCRIPTION" ]; then
+            BODY+="**Description:** ${DESCRIPTION}"$'\n\n'
+          fi
+
+          if [ -n "$SCOPE" ]; then
+            BODY+="**Scope:**"$'\n'
+            BODY+="${SCOPE}"$'\n\n'
+          fi
+
+          if [ -n "$REVIEW_RULES" ]; then
+            BODY+="**Claude review:** ${REVIEW_RULES}"$'\n\n'
+          fi
+
+          if [ -n "$EXPECTED" ]; then
+            BODY+="**Expected review points:**"$'\n'
+            BODY+="${EXPECTED}"$'\n'
+          fi
+
+          EOF_MARKER=$(openssl rand -hex 16)
+          {
+            echo "task_body<<${EOF_MARKER}"
+            echo "$BODY"
+            echo "${EOF_MARKER}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Update PR description
+        if: steps.parse.outputs.has_content == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUM="${{ github.event.pull_request.number }}"
+          CURRENT_BODY=$(gh pr view "$PR_NUM" --json body --jq '.body')
+
+          TASK_CONTENT="${{ steps.parse.outputs.task_body }}"
+
+          if echo "$CURRENT_BODY" | grep -q '<!-- TASK_PLACEHOLDER -->'; then
+            UPDATED_BODY="${CURRENT_BODY//<!-- TASK_PLACEHOLDER -->/$TASK_CONTENT}"
+            gh pr edit "$PR_NUM" --body "$UPDATED_BODY"
+            echo "PR description enriched with Task ${{ steps.extract.outputs.task_number }} details"
+          else
+            echo "No TASK_PLACEHOLDER found in PR body, skipping"
+          fi
+
   checkstyle:
     name: Checkstyle
     runs-on: ubuntu-latest
@@ -40,7 +148,8 @@ jobs:
 
   claude-review:
     name: Claude Code Review
-    needs: test
+    needs: [enrich-description, test]
+    if: always() && needs.test.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -62,6 +171,10 @@ jobs:
             PR NUMBER: ${{ github.event.pull_request.number }}
 
             You are a Senior Java Developer reviewing this Pull Request.
+
+            IMPORTANT: Before reviewing code, read the PR description using `gh pr view`.
+            The "Task Reference" section contains the task context from ./ai/tasks.md,
+            including expected review points. Use this as additional review guidance.
 
             Apply the code review guidelines from CLAUDE.md, including:
             - Global review scope (what to review and what to skip)

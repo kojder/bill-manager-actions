@@ -242,12 +242,57 @@
 
 ---
 
+## Phase 4: CI/CD Enhancements
+
+### Task 11: PR Enrich — tasks.md Integration ✅ COMPLETED
+
+**Status:** Committed (part of PR template setup)
+
+**Description:** Enrich PR description job integrated into CI pipeline (`ci.yml`). Extracts task number from branch name (`feat/task-{N}-...`), parses task details from `./ai/tasks.md`, and injects them into the PR body via placeholder. Runs only on PR `opened` event. Claude review job depends on it (`needs: [enrich-description, test]`) to ensure enriched description is available during review.
+
+**Scope:**
+- Modified: `.github/workflows/ci.yml` — added `enrich-description` job as first step, updated `claude-review` dependencies and prompt
+- New: `.github/pull_request_template.md` — PR template with `<!-- TASK_PLACEHOLDER -->` marker and review evaluation sections
+
+**Claude review:** CLAUDE.md review section (global) — workflow quality, script correctness
+
+**Size:** S
+
+---
+
+### Task 12: PR Enrich — Jira Integration
+
+**Description:** Extend the PR Enrich workflow with Jira integration. Fetch ticket description via Jira REST API based on ticket key extracted from branch name (e.g., `feat/PROJ-1234-description`). Replace a dedicated placeholder in PR body with Jira ticket title, description, acceptance criteria, and a direct link to the ticket.
+
+**Scope:**
+- Modified: `.github/workflows/ci.yml` — add Jira API step to `enrich-description` job (conditional, runs only when Jira key detected)
+- Modified: `.github/pull_request_template.md` — add `<!-- JIRA_PLACEHOLDER -->` marker
+- New: GitHub repository secrets: `JIRA_BASE_URL`, `JIRA_API_TOKEN`, `JIRA_USER_EMAIL`
+
+**Claude review:** **CLAUDE.md Config Module review rules** (secrets handling)
+
+**Expected review points:**
+- [ ] Jira API token stored as GitHub secret, never hardcoded
+- [ ] Graceful fallback when Jira API is unavailable or ticket not found
+- [ ] No sensitive data (API token, email) exposed in workflow logs
+- [ ] Branch name regex handles both task-N and PROJ-1234 patterns
+
+**Implementation notes:**
+- Jira REST API: `GET /rest/api/3/issue/{issueKey}` with Basic Auth (email + API token)
+- Extract fields: `summary`, `description`, `acceptance criteria` (custom field)
+- Consider reusable workflow (`workflow_call`) for use across multiple repositories
+- Rate limiting: Jira Cloud API has rate limits — single call per PR is fine
+
+**Size:** M
+
+---
+
 ## Claude Code Actions Review Mapping
 
 | CLAUDE.md review section | Tasks | Key review points |
 |--------------------------|-------|-------------------|
-| Global review scope | 2, 3, 5, 10 | Architecture, Records, REST conventions |
-| Config Module rules | 4 | Secrets, env separation, configurable URLs |
+| Global review scope | 2, 3, 5, 10, 11 | Architecture, Records, REST conventions, workflow quality |
+| Config Module rules | 4, 12 | Secrets, env separation, configurable URLs, Jira API secrets |
 | Upload Module rules | 6, 7, 8 | MIME validation, size limits, path traversal, preprocessing |
 | AI Module rules | 9 | Timeout, retry, exponential backoff, structured output |
 
