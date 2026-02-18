@@ -7,6 +7,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -54,7 +55,8 @@ class BillAnalysisResponseTest {
     BillAnalysisResponse response = objectMapper.readValue(json,
         BillAnalysisResponse.class);
 
-    assertThat(response.id()).isEqualTo("550e8400-e29b-41d4-a716-446655440000");
+    assertThat(response.id())
+        .isEqualTo(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
     assertThat(response.originalFileName()).isEqualTo("receipt.jpg");
     assertThat(response.analysis()).isNotNull();
     assertThat(response.analysis().merchantName()).isEqualTo("Test Store");
@@ -82,7 +84,7 @@ class BillAnalysisResponseTest {
 
   private BillAnalysisResponse createSampleResponse() {
     return new BillAnalysisResponse(
-        "550e8400-e29b-41d4-a716-446655440000",
+        UUID.fromString("550e8400-e29b-41d4-a716-446655440000"),
         "receipt.jpg",
         new BillAnalysisResult(
             "Test Store",

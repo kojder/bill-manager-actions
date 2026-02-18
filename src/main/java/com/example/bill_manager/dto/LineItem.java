@@ -3,6 +3,7 @@ package com.example.bill_manager.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import java.math.BigDecimal;
 
 public record LineItem(
@@ -14,10 +15,10 @@ public record LineItem(
     BigDecimal quantity,
 
     @NotNull
-    @Positive
+    @PositiveOrZero
     BigDecimal unitPrice,
 
     @NotNull
-    @Positive
+    @PositiveOrZero
     BigDecimal totalPrice
 ) {}
