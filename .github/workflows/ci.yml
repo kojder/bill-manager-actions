@@ -2,12 +2,14 @@ name: CI Pipeline
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
+    types: [opened, synchronize, ready_for_review, reopened, labeled]
 
 jobs:
   enrich-description:
     name: Enrich PR Description
-    if: github.event.action == 'opened'
+    if: >-
+      github.event.action == 'opened' ||
+      (github.event.action == 'labeled' && github.event.label.name == 'rerun')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -124,8 +126,7 @@ jobs:
                   f.write(body)
               print('Placeholder found and replaced')
           else:
-              print('No TASK_PLACEHOLDER found in PR body, skipping')
-              exit(1)
+              print('No TASK_PLACEHOLDER found in PR body (already enriched or missing), skipping')
           "
 
           if [ -f /tmp/new_body.md ]; then
@@ -136,7 +137,10 @@ jobs:
   checkstyle:
     name: Checkstyle
     needs: enrich-description
-    if: always() && needs.enrich-description.result != 'failure'
+    if: >-
+      always() &&
+      needs.enrich-description.result != 'failure' &&
+      (github.event.action != 'labeled' || github.event.label.name == 'rerun')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -208,3 +212,20 @@ jobs:
             Post a top-level PR comment with an overall summary.
           claude_args: |
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+
+  cleanup-label:
+    name: Remove rerun label
+    needs: [enrich-description, checkstyle, test, claude-review]
+    if: always() && github.event.action == 'labeled' && github.event.label.name == 'rerun'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Remove rerun label
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --remove-label "rerun" \
+            --repo "${{ github.repository }}"
+          echo "Removed 'rerun' label from PR #${{ github.event.pull_request.number }}"
