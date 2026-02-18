@@ -21,19 +21,19 @@ public class FileValidationServiceImpl implements FileValidationService {
 
   private final UploadProperties uploadProperties;
 
-  public FileValidationServiceImpl(UploadProperties uploadProperties) {
+  public FileValidationServiceImpl(final UploadProperties uploadProperties) {
     this.uploadProperties = uploadProperties;
   }
 
   @Override
-  public void validateFile(MultipartFile file) {
+  public void validateFile(final MultipartFile file) {
     validateFilePresence(file);
     validateFileSize(file);
     validateMimeType(file);
   }
 
   @Override
-  public String sanitizeFilename(String originalFilename) {
+  public String sanitizeFilename(final String originalFilename) {
     if (originalFilename == null || originalFilename.isBlank()) {
       return DEFAULT_FILENAME;
     }
@@ -62,7 +62,7 @@ public class FileValidationServiceImpl implements FileValidationService {
     return sanitized.isBlank() ? DEFAULT_FILENAME : sanitized;
   }
 
-  private void validateFilePresence(MultipartFile file) {
+  private void validateFilePresence(final MultipartFile file) {
     if (file == null || file.isEmpty()) {
       throw new FileValidationException(
           FileValidationException.ErrorCode.FILE_REQUIRED,
@@ -70,7 +70,7 @@ public class FileValidationServiceImpl implements FileValidationService {
     }
   }
 
-  private void validateFileSize(MultipartFile file) {
+  private void validateFileSize(final MultipartFile file) {
     if (!uploadProperties.isFileSizeValid(file.getSize())) {
       throw new FileValidationException(
           FileValidationException.ErrorCode.FILE_TOO_LARGE,
@@ -79,8 +79,8 @@ public class FileValidationServiceImpl implements FileValidationService {
     }
   }
 
-  private void validateMimeType(MultipartFile file) {
-    String detectedMimeType = detectMimeTypeFromContent(file);
+  private void validateMimeType(final MultipartFile file) {
+    final String detectedMimeType = detectMimeTypeFromContent(file);
     if (detectedMimeType == null
         || !uploadProperties.isMimeTypeAllowed(detectedMimeType)) {
       throw new FileValidationException(
@@ -90,10 +90,10 @@ public class FileValidationServiceImpl implements FileValidationService {
     }
   }
 
-  private String detectMimeTypeFromContent(MultipartFile file) {
+  private String detectMimeTypeFromContent(final MultipartFile file) {
     try (InputStream inputStream = file.getInputStream()) {
-      byte[] header = new byte[MAX_MAGIC_BYTES_LENGTH];
-      int bytesRead = inputStream.read(header);
+      final byte[] header = new byte[MAX_MAGIC_BYTES_LENGTH];
+      final int bytesRead = inputStream.read(header);
       if (bytesRead < JPEG_MAGIC.length) {
         return null;
       }
@@ -108,12 +108,13 @@ public class FileValidationServiceImpl implements FileValidationService {
         return "application/pdf";
       }
       return null;
-    } catch (IOException e) {
+    } catch (final IOException e) {
       throw new RuntimeException("Failed to read file content for MIME detection", e);
     }
   }
 
-  private boolean startsWith(byte[] data, int dataLength, byte[] prefix) {
+  private boolean startsWith(final byte[] data, final int dataLength,
+      final byte[] prefix) {
     if (dataLength < prefix.length) {
       return false;
     }

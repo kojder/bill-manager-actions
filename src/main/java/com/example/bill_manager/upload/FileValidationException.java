@@ -13,7 +13,7 @@ public class FileValidationException extends RuntimeException {
 
   private final ErrorCode errorCode;
 
-  public FileValidationException(ErrorCode errorCode, String message) {
+  public FileValidationException(final ErrorCode errorCode, String message) {
     super(message);
     this.errorCode = errorCode;
   }

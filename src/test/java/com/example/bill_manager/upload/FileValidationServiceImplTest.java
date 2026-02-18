@@ -19,7 +19,7 @@ class FileValidationServiceImplTest {
 
   @BeforeEach
   void setUp() {
-    UploadProperties properties = new UploadProperties(
+    final UploadProperties properties = new UploadProperties(
         MAX_FILE_SIZE,
         List.of("image/jpeg", "image/png", "application/pdf")
     );
@@ -31,9 +31,9 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldAcceptValidJpegFile() {
-      byte[] jpegContent = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0,
+      final byte[] jpegContent = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0,
           0x00, 0x10, 0x4A, 0x46};
-      MockMultipartFile file = new MockMultipartFile(
+      final MockMultipartFile file = new MockMultipartFile(
           "file", "photo.jpg", "image/jpeg", jpegContent);
 
       assertThatCode(() -> service.validateFile(file)).doesNotThrowAnyException();
@@ -41,9 +41,9 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldAcceptValidPngFile() {
-      byte[] pngContent = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+      final byte[] pngContent = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
           0x00, 0x00, 0x00, 0x0D};
-      MockMultipartFile file = new MockMultipartFile(
+      final MockMultipartFile file = new MockMultipartFile(
           "file", "image.png", "image/png", pngContent);
 
       assertThatCode(() -> service.validateFile(file)).doesNotThrowAnyException();
@@ -51,8 +51,8 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldAcceptValidPdfFile() {
-      byte[] pdfContent = {0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34};
-      MockMultipartFile file = new MockMultipartFile(
+      final byte[] pdfContent = {0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34};
+      final MockMultipartFile file = new MockMultipartFile(
           "file", "document.pdf", "application/pdf", pdfContent);
 
       assertThatCode(() -> service.validateFile(file)).doesNotThrowAnyException();
@@ -72,7 +72,7 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldRejectEmptyFile() {
-      MockMultipartFile file = new MockMultipartFile(
+      final MockMultipartFile file = new MockMultipartFile(
           "file", "empty.jpg", "image/jpeg", new byte[0]);
 
       assertThatThrownBy(() -> service.validateFile(file))
@@ -87,11 +87,11 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldRejectOversizedFile() {
-      byte[] jpegHeader = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
-      byte[] oversizedContent = new byte[(int) MAX_FILE_SIZE + 1];
+      final byte[] jpegHeader = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0};
+      final byte[] oversizedContent = new byte[(int) MAX_FILE_SIZE + 1];
       System.arraycopy(jpegHeader, 0, oversizedContent, 0, jpegHeader.length);
 
-      MockMultipartFile file = new MockMultipartFile(
+      final MockMultipartFile file = new MockMultipartFile(
           "file", "large.jpg", "image/jpeg", oversizedContent);
 
       assertThatThrownBy(() -> service.validateFile(file))
@@ -102,12 +102,12 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldAcceptFileAtExactMaxSize() {
-      byte[] content = new byte[(int) MAX_FILE_SIZE];
+      final byte[] content = new byte[(int) MAX_FILE_SIZE];
       content[0] = (byte) 0xFF;
       content[1] = (byte) 0xD8;
       content[2] = (byte) 0xFF;
 
-      MockMultipartFile file = new MockMultipartFile(
+      final MockMultipartFile file = new MockMultipartFile(
           "file", "exact.jpg", "image/jpeg", content);
 
       assertThatCode(() -> service.validateFile(file)).doesNotThrowAnyException();
@@ -119,8 +119,8 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldRejectFileWithUnrecognizedMagicBytes() {
-      byte[] randomBytes = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07};
-      MockMultipartFile file = new MockMultipartFile(
+      final byte[] randomBytes = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07};
+      final MockMultipartFile file = new MockMultipartFile(
           "file", "unknown.bin", "application/octet-stream", randomBytes);
 
       assertThatThrownBy(() -> service.validateFile(file))
@@ -131,7 +131,7 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldRejectTextFileWithJpgExtension() {
-      MockMultipartFile file = new MockMultipartFile(
+      final MockMultipartFile file = new MockMultipartFile(
           "file", "fake.jpg", "image/jpeg", "Hello World".getBytes());
 
       assertThatThrownBy(() -> service.validateFile(file))
@@ -142,7 +142,7 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldRejectFileTooSmallForMagicBytesDetection() {
-      MockMultipartFile file = new MockMultipartFile(
+      final MockMultipartFile file = new MockMultipartFile(
           "file", "tiny.bin", "application/octet-stream", new byte[]{0x01, 0x02});
 
       assertThatThrownBy(() -> service.validateFile(file))
@@ -157,7 +157,7 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldSanitizePathTraversalAttempt() {
-      String sanitized = service.sanitizeFilename("../../etc/passwd");
+      final String sanitized = service.sanitizeFilename("../../etc/passwd");
 
       assertThat(sanitized).doesNotContain("..");
       assertThat(sanitized).doesNotContain("/");
@@ -165,7 +165,7 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldRemoveBackslashPathSeparators() {
-      String sanitized = service.sanitizeFilename("..\\..\\windows\\system32");
+      final String sanitized = service.sanitizeFilename("..\\..\\windows\\system32");
 
       assertThat(sanitized).doesNotContain("\\");
       assertThat(sanitized).doesNotContain("..");
@@ -183,7 +183,7 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldRemoveControlCharacters() {
-      String sanitized = service.sanitizeFilename("file\u0000name.pdf");
+      final String sanitized = service.sanitizeFilename("file\u0000name.pdf");
 
       assertThat(sanitized).doesNotContain("\u0000");
       assertThat(sanitized).isEqualTo("filename.pdf");
@@ -197,16 +197,16 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldTruncateLongFilename() {
-      String longName = "a".repeat(300) + ".jpg";
+      final String longName = "a".repeat(300) + ".jpg";
 
-      String sanitized = service.sanitizeFilename(longName);
+      final String sanitized = service.sanitizeFilename(longName);
 
       assertThat(sanitized).hasSizeLessThanOrEqualTo(255);
     }
 
     @Test
     void shouldRemoveLeadingDots() {
-      String sanitized = service.sanitizeFilename(".hidden_file.txt");
+      final String sanitized = service.sanitizeFilename(".hidden_file.txt");
 
       assertThat(sanitized).doesNotStartWith(".");
       assertThat(sanitized).isEqualTo("hidden_file.txt");
@@ -214,7 +214,7 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldHandleNestedTraversalAttempts() {
-      String sanitized = service.sanitizeFilename("....//....//etc/passwd");
+      final String sanitized = service.sanitizeFilename("....//....//etc/passwd");
 
       assertThat(sanitized).doesNotContain("..");
       assertThat(sanitized).doesNotContain("/");
