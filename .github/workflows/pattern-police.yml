@@ -1,0 +1,79 @@
+name: Pattern Police
+
+# Architecture drift checker — reads CLAUDE.md review rules and verifies
+# that PR changes respect package boundaries and dependency directions.
+# Manual trigger only. Produces a read-only report under reports/.
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to analyze for architecture drift
+        required: true
+      rules_path:
+        description: Path to architecture rules file
+        required: false
+        default: "CLAUDE.md"
+
+permissions:
+  contents: read
+  pull-requests: read
+  id-token: write
+
+jobs:
+  pattern-check:
+    name: Architecture Audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect architecture drift
+        uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ inputs.pr_number }}
+            RULES FILE: ${{ inputs.rules_path }}
+
+            You are an architecture pattern checker for a Spring Boot Java project.
+
+            Steps:
+            1) Read the rules file (${{ inputs.rules_path }}) and extract:
+               - Path-specific review rules (sections for ai/, upload/, config/ packages)
+               - SOLID principles and dependency direction rules
+               - Code conventions (Records for DTOs, final usage, interface patterns)
+               - Any forbidden patterns or required patterns
+
+            2) Get the PR diff using `gh pr diff ${{ inputs.pr_number }}` and analyze for violations:
+               - Package boundary violations (e.g., controller importing directly from ai/ internals)
+               - Forbidden dependency directions (concrete implementations instead of interfaces)
+               - Missing `final` on parameters/fields per convention
+               - DTOs using classes instead of Records
+               - Config module: hardcoded secrets, missing environment separation
+               - Upload module: MIME validation by extension instead of content, missing size checks
+               - AI module: missing timeout/retry, raw API errors exposed
+
+            3) Write a report to reports/pattern-drift-pr-${{ inputs.pr_number }}.md containing:
+               - Summary of enforced rules (brief)
+               - Concrete findings with file paths and line references
+               - Severity for each finding (critical / warning / info)
+               - Suggested minimal patches as unified diffs in fenced code blocks
+               - Overall compliance score (pass / needs attention / fail)
+
+            Safety:
+            - Do NOT modify any source files. Only write the report under reports/.
+          claude_args: |
+            --allowedTools "Write,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(mkdir -p reports)"
+
+      - name: Upload reports artifact
+        if: ${{ hashFiles('reports/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: pattern-audit-pr-${{ inputs.pr_number }}
+          path: reports/**

@@ -238,6 +238,7 @@ PR opened / "rerun" label          PR synchronize (code push)
                   ▼
 ┌─────────────────────────────────────────┐
 │  Claude Code Actions Review             │ ──► Logic, Architecture, Context
+│  + Structured Report → artifact upload  │
 └─────────────────┬───────────────────────┘
                   │
                   ▼
@@ -270,7 +271,13 @@ Add the `rerun` label to a PR to trigger the full pipeline (including PR descrip
 Pipeline is defined in `.github/workflows/`:
 - **ci.yml** — CI pipeline: enrich-description → checkstyle → test → claude-review (on every PR)
   - Triggers: `opened`, `synchronize`, `ready_for_review`, `reopened`, `labeled` (rerun only)
+  - Claude review produces structured report uploaded as artifact (`claude-review-report-pr-{N}`)
 - **claude.yml** — Interactive @claude mentions (on PRs and issues)
+  - Scoped `--allowedTools` whitelist: Read, Write, Edit, gh CLI (pr/issue), git (diff/log/status), mvnw (checkstyle/test)
+- **pattern-police.yml** — On-demand architecture drift checker (`workflow_dispatch`)
+  - Input: `pr_number`, optional `rules_path` (defaults to `CLAUDE.md`)
+  - Reads path-specific review rules and verifies package boundaries in PR diff
+  - Report uploaded as artifact (`pattern-audit-pr-{N}`)
 
 ## Related Repositories
 

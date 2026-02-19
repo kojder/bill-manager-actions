@@ -186,10 +186,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Claude Code Review
         uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ github.token }}
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: "claude[bot],github-actions[bot]"
@@ -210,10 +212,37 @@ jobs:
             DO NOT comment on formatting issues (handled by Checkstyle CI job).
             DO NOT comment on test failures (handled by test CI job).
 
-            Use inline comments for specific code issues.
-            Post a top-level PR comment with an overall summary.
+            ## Review Workflow
+
+            1. EXECUTION PLAN: Start by writing a brief execution plan — list which checks
+               you will perform and which files you will examine. Include this plan at the
+               top of your structured report.
+
+            2. INLINE REVIEW: Use inline comments for specific code issues found in the diff.
+
+            3. PR SUMMARY: Post a top-level PR comment with an overall summary.
+
+            4. STRUCTURED REPORT: After completing the review, write a markdown report to
+               reports/pr-${{ github.event.pull_request.number }}-review.md with:
+               - Execution Plan (what you checked and why)
+               - Summary
+               - Strengths
+               - Risks / Potential Bugs
+               - Path-Specific Rule Compliance (ai/, upload/, config/ — only for affected paths)
+               - Suggested minimal patches as unified diffs in fenced code blocks (if applicable)
+               - Next Actions for the author
+
+            Rules:
+            - Do NOT modify any source files. Only write the report file under reports/.
           claude_args: |
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Write,Bash(mkdir -p reports)"
+
+      - name: Upload review report
+        if: ${{ hashFiles('reports/**') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-review-report-pr-${{ github.event.pull_request.number }}
+          path: reports/**
 
   cleanup-label:
     name: Remove rerun label
