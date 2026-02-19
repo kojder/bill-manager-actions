@@ -67,12 +67,22 @@ Unit Tests (JUnit 5 + JaCoCo)  ──── runs on every trigger
     │
     ▼
 Claude Code Actions Review      ──── runs on every trigger
++ Structured Report → artifact upload
     │
     ▼
 Cleanup (auto-remove "rerun" label, only on rerun trigger)
 ```
 
 **Key behavior:** On every code push (`synchronize`), the full chain `Checkstyle → Unit Tests → Claude Code Review` runs. PR description enrichment only runs on PR open or when the `rerun` label is added.
+
+### Structured Review Reports
+
+Claude Code Review produces a structured markdown report uploaded as a workflow artifact (`claude-review-report-pr-{N}`). The report includes:
+- **Execution Plan** — what was checked and why
+- **Summary, Strengths, Risks/Bugs**
+- **Path-Specific Rule Compliance** — for affected paths (ai/, upload/, config/)
+- **Suggested patches** — unified diffs for identified issues
+- **Next Actions** — recommendations for the author
 
 ### PR Description Enrichment
 
@@ -81,6 +91,19 @@ The `enrich-description` job automatically populates the PR description with tas
 ### Re-running the Pipeline
 
 Add the `rerun` label to a PR to trigger the full pipeline including PR description enrichment. The label is automatically removed after the pipeline completes.
+
+### On-Demand Workflows
+
+In addition to the main CI pipeline, the following manual workflows are available:
+
+- **Pattern Police** (`pattern-police.yml`) — Architecture drift checker. Reads path-specific review rules from `CLAUDE.md` and verifies that PR changes respect package boundaries, dependency directions, and code conventions. Run via `workflow_dispatch` with a PR number. Report uploaded as artifact (`pattern-audit-pr-{N}`).
+
+### Tool Restrictions (Security)
+
+All Claude workflows use scoped `--allowedTools` whitelists:
+- **ci.yml** (review): inline comments, `gh pr` commands, report writing
+- **claude.yml** (interactive): Read/Write/Edit, `gh pr/issue` commands, `git diff/log/status`, `./mvnw checkstyle:check`, `./mvnw test`
+- **pattern-police.yml** (audit): report writing, `gh pr diff/view`
 
 ### Context Management (`CLAUDE.md`)
 

@@ -215,6 +215,7 @@ PR opened / "rerun" label          PR synchronize (code push)
                   ▼
 ┌─────────────────────────────────────────┐
 │  Claude Code Actions Review             │ ──► Logic, Architecture
+│  + Structured Report → artifact upload  │
 └─────────────────┬───────────────────────┘
                   │
                   ▼
@@ -226,3 +227,18 @@ PR opened / "rerun" label          PR synchronize (code push)
 On every code push (`synchronize`), the full chain `checkstyle → test → claude-review` runs.
 Enrichment only runs on PR open or `rerun` label. Each job uses `always()` with explicit
 success check on its dependency to propagate correctly when upstream jobs are skipped.
+
+### Structured Review Reports
+
+Claude review produces a markdown report uploaded as a workflow artifact (`claude-review-report-pr-{N}`).
+Report structure: Execution Plan → Summary → Strengths → Risks/Bugs → Path-Specific Rule Compliance → Suggested Patches → Next Actions.
+
+### On-Demand Workflows
+
+- **pattern-police.yml** — Architecture drift checker (`workflow_dispatch`). Reads CLAUDE.md review rules
+  and verifies PR changes respect package boundaries. Report: `pattern-audit-pr-{N}`.
+
+### Tool Restrictions
+
+All Claude workflows use scoped `--allowedTools` whitelists to enforce least-privilege access.
+Interactive `@claude` (claude.yml) is limited to: Read, Write, Edit, gh CLI, git read commands, and mvnw.

@@ -318,11 +318,40 @@
 
 ---
 
+### Task 13: Enhanced Review Pipeline — Structured Reports, Security & Pattern Police ✅ COMPLETED
+
+**Status:** Committed to master
+
+**Description:** Enhance CI review pipeline with structured reports, security hardening, and on-demand architecture audit. Inspired by patterns from `claude-code-action-ideas` repository (diff-aware-pr-reviewer, pattern-police, allowedTools security).
+
+**Scope:**
+- Modified: `.github/workflows/ci.yml` — enhanced `claude-review` job with execution plan, structured markdown report, artifact upload
+- Modified: `.github/workflows/claude.yml` — added scoped `--allowedTools` whitelist (security hardening)
+- New: `.github/workflows/pattern-police.yml` — on-demand architecture drift checker (`workflow_dispatch`)
+- Modified: `.gitignore` — added `reports/`
+- Modified: `CLAUDE.md` — updated pipeline diagram and workflow documentation
+- Modified: `README.md` — added structured reports, pattern-police, and tool restrictions sections
+- Modified: `ai/tech-stack.md` — updated pipeline diagram and added new sections
+- Modified: `docs/claude-actions-context.md` — updated workflow descriptions and security section
+
+**Claude review:** CLAUDE.md review section (global) — workflow quality, security patterns
+
+**Implementation notes:**
+- `ci.yml` review now uses `fetch-depth: 0` (full history) and `GH_TOKEN` env pattern
+- Structured report saved as `reports/pr-{N}-review.md` and uploaded as artifact `claude-review-report-pr-{N}`
+- `claude.yml` allowedTools: Read, Write, Edit, gh CLI (pr/issue), git (diff/log/status), mvnw (checkstyle/test)
+- Pattern Police reads CLAUDE.md path-specific rules and checks PR diff for architecture violations
+- All patterns based on `claude-code-action-ideas` repository best practices
+
+**Size:** M
+
+---
+
 ## Claude Code Actions Review Mapping
 
 | CLAUDE.md review section | Tasks | Key review points |
 |--------------------------|-------|-------------------|
-| Global review scope | 2, 3, 5, 10, 11 | Architecture, Records, REST conventions, workflow quality |
+| Global review scope | 2, 3, 5, 10, 11, 13 | Architecture, Records, REST conventions, workflow quality, CI security |
 | Config Module rules | 4, 12 | Secrets, env separation, configurable URLs, Jira API secrets |
 | Upload Module rules | 6, 7, 8 | MIME validation, size limits, path traversal, preprocessing |
 | AI Module rules | 9 | Timeout, retry, exponential backoff, structured output |

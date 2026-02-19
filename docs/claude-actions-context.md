@@ -135,14 +135,18 @@ Triggers on every PR (`pull_request` event). Job dependency chain:
 1. **Enrich PR Description** — Extracts task number from branch name (`feat/task-{N}-...`), parses task context from `./ai/tasks.md`, and injects it into the PR body via `<!-- TASK_PLACEHOLDER -->`. Runs on `opened` or when the `rerun` label is added. Gracefully handles missing task numbers (inserts warning).
 2. **Checkstyle** — Runs after enrich succeeds or is skipped (on `synchronize` events). Blocks pipeline on failure.
 3. **Unit Tests** — Runs after Checkstyle passes.
-4. **Claude Code Review** — Runs after tests pass. Claude reads the enriched PR description for task context and expected review points.
+4. **Claude Code Review** — Runs after tests pass. Claude reads the enriched PR description for task context and expected review points. Produces a structured markdown report uploaded as a workflow artifact (`claude-review-report-pr-{N}`).
 5. **Cleanup** — Removes the `rerun` label after the pipeline completes (only on `rerun`-triggered runs).
 
 **Re-running the pipeline:** Add the `rerun` label to a PR to trigger the full pipeline including enrichment. The label is auto-removed after completion, allowing re-use.
 
 ### `claude.yml` — Interactive Assistant
 
-Triggers on `@claude` mentions in PR comments, review comments, and issues. Claude responds to specific requests, can make code changes, and push commits.
+Triggers on `@claude` mentions in PR comments, review comments, and issues. Claude responds to specific requests, can make code changes, and push commits. Scoped `--allowedTools` whitelist restricts access to: Read, Write, Edit, gh CLI (pr/issue), git (diff/log/status), and mvnw (checkstyle/test).
+
+### `pattern-police.yml` — Architecture Audit
+
+Manual trigger (`workflow_dispatch`) with PR number input. Reads path-specific review rules from `CLAUDE.md` and verifies that PR changes respect package boundaries, dependency directions, and code conventions. Report uploaded as artifact (`pattern-audit-pr-{N}`).
 
 ## Security Considerations
 
@@ -151,6 +155,7 @@ Triggers on `@claude` mentions in PR comments, review comments, and issues. Clau
 - PRs from **forks** do not have access to secrets (GitHub security policy)
 - Collaborators pushing branches directly to the repo can trigger workflows with full secret access
 - The `allowed_bots` parameter controls which bot actors can trigger Claude review
+- All workflows use scoped `--allowedTools` whitelists to enforce least-privilege access (no unrestricted shell commands)
 
 ## Limitations
 
