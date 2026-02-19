@@ -170,22 +170,36 @@
 
 ---
 
-### Task 7: Upload REST Controller + Error Handling
+### Task 7: Upload REST Controller + Error Handling ✅ COMPLETED
+
+**Status:** Merged to master (PR #7)
 
 **Description:** Controller with endpoints `POST /api/bills/upload` and `GET /api/bills/{id}`. Global exception handler with `@ControllerAdvice`.
 
 **Scope:**
 - New: `src/main/java/.../upload/BillUploadController.java`
+- New: `src/main/java/.../upload/BillResultStore.java` (extracted from controller after review)
 - New: `src/main/java/.../exception/GlobalExceptionHandler.java`
-- Tests: MockMvc — upload valid/invalid file, retrieve result, 404, error formats
+- New: `src/main/java/.../exception/AnalysisNotFoundException.java`
+- Modified: `src/main/java/.../dto/BillAnalysisResponse.java` — `@NotNull` removed from `analysis` (nullable until AI), `LocalDateTime` → `Instant`
+- Modified: `src/main/java/.../dto/ErrorResponse.java` — `LocalDateTime` → `Instant`
+- Modified: `application.properties` — multipart upload limits
+- Tests: MockMvc — 11 tests (upload valid/invalid file, retrieve result, 404, error formats, stacktrace suppression)
 
 **Claude review:** **CLAUDE.md Upload Module review rules**
 
 **Expected review points:**
-- [ ] Correct REST conventions (HTTP codes, Content-Type)
-- [ ] Input validation at controller level
-- [ ] Standardized error responses (ErrorResponse)
-- [ ] No internal stacktraces exposed to users
+- [x] Correct REST conventions (HTTP codes, Content-Type)
+- [x] Input validation at controller level
+- [x] Standardized error responses (ErrorResponse)
+- [x] No internal stacktraces exposed to users
+
+**Implementation notes:**
+- `GlobalExceptionHandler` maps 9 exception types: `FileValidationException` (4 error codes), `AnalysisNotFoundException`, `MethodArgumentTypeMismatchException`, `MissingServletRequestPartException`, `MaxUploadSizeExceededException`, generic `Exception`
+- `BillResultStore` (`@Component`) with `ConcurrentHashMap` — extracted from controller after code review (SRP). Task 10 may evolve this into `InMemoryResultStore`
+- `Instant` instead of `LocalDateTime` for timezone-safe timestamps (review finding)
+- Multipart limit set to 11MB (intentionally above 10MB app limit so `FileValidationService` provides structured error)
+- `analysis: null` in response — AI analysis not yet implemented (Task 9)
 
 **Size:** M
 
