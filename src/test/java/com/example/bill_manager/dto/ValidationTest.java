@@ -6,7 +6,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -179,7 +179,7 @@ class ValidationTest {
     void shouldPassForValidResponse() {
       BillAnalysisResponse response = new BillAnalysisResponse(
           UUID.randomUUID(), "receipt.jpg",
-          createValidResult(), LocalDateTime.now());
+          createValidResult(), Instant.now());
 
       Set<ConstraintViolation<BillAnalysisResponse>> violations =
           validator.validate(response);
@@ -191,7 +191,7 @@ class ValidationTest {
     void shouldRejectNullId() {
       BillAnalysisResponse response = new BillAnalysisResponse(
           null, "receipt.jpg",
-          createValidResult(), LocalDateTime.now());
+          createValidResult(), Instant.now());
 
       Set<ConstraintViolation<BillAnalysisResponse>> violations =
           validator.validate(response);
@@ -205,7 +205,7 @@ class ValidationTest {
     void shouldRejectBlankFileName() {
       BillAnalysisResponse response = new BillAnalysisResponse(
           UUID.randomUUID(), "",
-          createValidResult(), LocalDateTime.now());
+          createValidResult(), Instant.now());
 
       Set<ConstraintViolation<BillAnalysisResponse>> violations =
           validator.validate(response);

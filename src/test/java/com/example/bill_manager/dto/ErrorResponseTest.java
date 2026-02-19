@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +23,7 @@ class ErrorResponseTest {
     ErrorResponse error = new ErrorResponse(
         "UNSUPPORTED_MEDIA_TYPE",
         "File type not supported. Allowed: JPEG, PNG, PDF",
-        LocalDateTime.of(2026, 2, 6, 14, 30, 0)
+        Instant.parse("2026-02-06T14:30:00Z")
     );
 
     String json = objectMapper.writeValueAsString(error);
@@ -39,7 +39,7 @@ class ErrorResponseTest {
         {
           "code": "FILE_TOO_LARGE",
           "message": "Exceeded 10MB limit",
-          "timestamp": [2026, 2, 6, 14, 30, 0]
+          "timestamp": "2026-02-06T14:30:00Z"
         }
         """;
 
@@ -48,7 +48,7 @@ class ErrorResponseTest {
     assertThat(error.code()).isEqualTo("FILE_TOO_LARGE");
     assertThat(error.message()).isEqualTo("Exceeded 10MB limit");
     assertThat(error.timestamp()).isEqualTo(
-        LocalDateTime.of(2026, 2, 6, 14, 30, 0));
+        Instant.parse("2026-02-06T14:30:00Z"));
   }
 
   @Test
@@ -56,7 +56,7 @@ class ErrorResponseTest {
     ErrorResponse original = new ErrorResponse(
         "ANALYSIS_NOT_FOUND",
         "Analysis with given ID not found",
-        LocalDateTime.of(2026, 2, 6, 15, 0, 0)
+        Instant.parse("2026-02-06T15:00:00Z")
     );
 
     String json = objectMapper.writeValueAsString(original);
