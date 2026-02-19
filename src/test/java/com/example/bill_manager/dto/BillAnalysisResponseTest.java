@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,7 +48,7 @@ class BillAnalysisResponseTest {
             "currency": "PLN",
             "categoryTags": ["test"]
           },
-          "analyzedAt": [2026, 2, 6, 14, 30, 0]
+          "analyzedAt": "2026-02-06T14:30:00Z"
         }
         """;
 
@@ -62,7 +62,7 @@ class BillAnalysisResponseTest {
     assertThat(response.analysis().merchantName()).isEqualTo("Test Store");
     assertThat(response.analysis().items()).hasSize(1);
     assertThat(response.analyzedAt()).isEqualTo(
-        LocalDateTime.of(2026, 2, 6, 14, 30, 0));
+        Instant.parse("2026-02-06T14:30:00Z"));
   }
 
   @Test
@@ -94,7 +94,7 @@ class BillAnalysisResponseTest {
             "PLN",
             List.of("test")
         ),
-        LocalDateTime.of(2026, 2, 6, 14, 30, 0)
+        Instant.parse("2026-02-06T14:30:00Z")
     );
   }
 }

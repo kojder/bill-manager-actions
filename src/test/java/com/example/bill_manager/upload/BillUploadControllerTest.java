@@ -10,7 +10,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.jayway.jsonpath.JsonPath;
+import com.example.bill_manager.dto.BillAnalysisResponse;
+import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -29,6 +31,9 @@ class BillUploadControllerTest {
 
   @MockitoBean
   private FileValidationService fileValidationService;
+
+  @MockitoBean
+  private BillResultStore billResultStore;
 
   @Nested
   class UploadEndpoint {
@@ -132,30 +137,23 @@ class BillUploadControllerTest {
 
     @Test
     void shouldReturn200WhenResultExists() throws Exception {
-      final MockMultipartFile file = new MockMultipartFile(
-          "file", "receipt.jpg", "image/jpeg",
-          new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF});
+      final UUID id = UUID.randomUUID();
+      final BillAnalysisResponse stored = new BillAnalysisResponse(
+          id, "receipt.jpg", null, Instant.now());
 
-      doNothing().when(fileValidationService).validateFile(any(MultipartFile.class));
-      when(fileValidationService.sanitizeFilename("receipt.jpg"))
-          .thenReturn("receipt.jpg");
-
-      final String postResponse = mockMvc
-          .perform(multipart("/api/bills/upload").file(file))
-          .andExpect(status().isCreated())
-          .andReturn().getResponse().getContentAsString();
-
-      final String id = JsonPath.read(postResponse, "$.id");
+      when(billResultStore.findById(id)).thenReturn(Optional.of(stored));
 
       mockMvc.perform(get("/api/bills/" + id))
           .andExpect(status().isOk())
-          .andExpect(jsonPath("$.id").value(id))
+          .andExpect(jsonPath("$.id").value(id.toString()))
           .andExpect(jsonPath("$.originalFileName").value("receipt.jpg"));
     }
 
     @Test
     void shouldReturn404WhenResultNotFound() throws Exception {
-      final String randomUuid = UUID.randomUUID().toString();
+      final UUID randomUuid = UUID.randomUUID();
+
+      when(billResultStore.findById(randomUuid)).thenReturn(Optional.empty());
 
       mockMvc.perform(get("/api/bills/" + randomUuid))
           .andExpect(status().isNotFound())

@@ -1,9 +1,9 @@
 package com.example.bill_manager.dto;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record ErrorResponse(
     String code,
     String message,
-    LocalDateTime timestamp
+    Instant timestamp
 ) {}

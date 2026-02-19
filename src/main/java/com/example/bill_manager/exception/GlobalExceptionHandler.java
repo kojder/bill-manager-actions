@@ -2,7 +2,7 @@ package com.example.bill_manager.exception;
 
 import com.example.bill_manager.dto.ErrorResponse;
 import com.example.bill_manager.upload.FileValidationException;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,7 +19,7 @@ public class GlobalExceptionHandler {
       final FileValidationException ex) {
     final HttpStatus status = mapErrorCodeToStatus(ex.getErrorCode());
     final ErrorResponse response = new ErrorResponse(
-        ex.getErrorCode().name(), ex.getMessage(), LocalDateTime.now());
+        ex.getErrorCode().name(), ex.getMessage(), Instant.now());
     return ResponseEntity.status(status).body(response);
   }
 
@@ -27,7 +27,7 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleAnalysisNotFound(
       final AnalysisNotFoundException ex) {
     final ErrorResponse response = new ErrorResponse(
-        "ANALYSIS_NOT_FOUND", ex.getMessage(), LocalDateTime.now());
+        "ANALYSIS_NOT_FOUND", ex.getMessage(), Instant.now());
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
   }
 
@@ -37,7 +37,7 @@ public class GlobalExceptionHandler {
     final ErrorResponse response = new ErrorResponse(
         "INVALID_ID_FORMAT",
         "ID must be a valid UUID",
-        LocalDateTime.now());
+        Instant.now());
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
   }
 
@@ -47,7 +47,7 @@ public class GlobalExceptionHandler {
     final ErrorResponse response = new ErrorResponse(
         "FILE_REQUIRED",
         "File is required and must not be empty",
-        LocalDateTime.now());
+        Instant.now());
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
   }
 
@@ -57,7 +57,7 @@ public class GlobalExceptionHandler {
     final ErrorResponse response = new ErrorResponse(
         "FILE_TOO_LARGE",
         "File size exceeds the maximum allowed limit",
-        LocalDateTime.now());
+        Instant.now());
     return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(response);
   }
 
@@ -67,7 +67,7 @@ public class GlobalExceptionHandler {
     final ErrorResponse response = new ErrorResponse(
         "INTERNAL_ERROR",
         "An unexpected error occurred",
-        LocalDateTime.now());
+        Instant.now());
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
         .body(response);
   }

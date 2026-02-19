@@ -2,10 +2,8 @@ package com.example.bill_manager.upload;
 
 import com.example.bill_manager.dto.BillAnalysisResponse;
 import com.example.bill_manager.exception.AnalysisNotFoundException;
-import java.time.LocalDateTime;
-import java.util.Map;
+import java.time.Instant;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,12 +19,13 @@ import org.springframework.web.multipart.MultipartFile;
 public class BillUploadController {
 
   private final FileValidationService fileValidationService;
-  private final Map<UUID, BillAnalysisResponse> resultStore =
-      new ConcurrentHashMap<>();
+  private final BillResultStore billResultStore;
 
   public BillUploadController(
-      final FileValidationService fileValidationService) {
+      final FileValidationService fileValidationService,
+      final BillResultStore billResultStore) {
     this.fileValidationService = fileValidationService;
+    this.billResultStore = billResultStore;
   }
 
   @PostMapping("/upload")
@@ -37,18 +36,16 @@ public class BillUploadController {
         fileValidationService.sanitizeFilename(file.getOriginalFilename());
     final UUID id = UUID.randomUUID();
     final BillAnalysisResponse response = new BillAnalysisResponse(
-        id, sanitizedFilename, null, LocalDateTime.now());
-    resultStore.put(id, response);
+        id, sanitizedFilename, null, Instant.now());
+    billResultStore.save(id, response);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @GetMapping("/{id}")
   public ResponseEntity<BillAnalysisResponse> getAnalysisResult(
       @PathVariable final UUID id) {
-    final BillAnalysisResponse result = resultStore.get(id);
-    if (result == null) {
-      throw new AnalysisNotFoundException(id);
-    }
+    final BillAnalysisResponse result = billResultStore.findById(id)
+        .orElseThrow(() -> new AnalysisNotFoundException(id));
     return ResponseEntity.ok(result);
   }
 }
