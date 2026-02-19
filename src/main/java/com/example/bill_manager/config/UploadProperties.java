@@ -17,7 +17,7 @@ public record UploadProperties(
     @NotEmpty(message = "Allowed MIME types must not be empty")
     List<String> allowedMimeTypes
 ) {
-  public boolean isFileSizeValid(long fileSizeBytes) {
+  public boolean isFileSizeValid(final long fileSizeBytes) {
     return fileSizeBytes > 0 && fileSizeBytes <= maxFileSizeBytes;
   }
 
@@ -35,7 +35,7 @@ public record UploadProperties(
    * @param mimeType the MIME type string to check (typically from Content-Type header)
    * @return {@code true} if the MIME type is in the allowed list, {@code false} otherwise
    */
-  public boolean isMimeTypeAllowed(String mimeType) {
+  public boolean isMimeTypeAllowed(final String mimeType) {
     return mimeType != null && allowedMimeTypes.contains(mimeType);
   }
 }
