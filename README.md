@@ -35,23 +35,26 @@ Build an application for automated bill analysis (images/PDF) using LLMs (Groq) 
 ### Pipeline Flow
 
 ```
-PR Created / "rerun" label added
+PR opened / "rerun" label          PR synchronize (code push)
+    │                                    │
+    ▼                                    │
+Enrich PR Description                   │
+(task context from ai/tasks.md)          │
+    │                                    │
+    ▼                                    ▼
+Checkstyle (Google Java Style)  ──── runs on every trigger
     │
     ▼
-Enrich PR Description (task context from ai/tasks.md)
+Unit Tests (JUnit 5 + JaCoCo)  ──── runs on every trigger
     │
     ▼
-Checkstyle (Google Java Style)
+Claude Code Actions Review      ──── runs on every trigger
     │
     ▼
-Unit Tests (JUnit 5 + JaCoCo)
-    │
-    ▼
-Claude Code Actions Review (logic, architecture, security)
-    │
-    ▼
-Cleanup (auto-remove "rerun" label)
+Cleanup (auto-remove "rerun" label, only on rerun trigger)
 ```
+
+**Key behavior:** On every code push (`synchronize`), the full chain `Checkstyle → Unit Tests → Claude Code Review` runs. PR description enrichment only runs on PR open or when the `rerun` label is added.
 
 ### PR Description Enrichment
 

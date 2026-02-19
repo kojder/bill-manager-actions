@@ -215,36 +215,40 @@ Every Groq API call MUST have:
 ## Pre-Review Automation Pipeline
 
 ```
-PR Created / "rerun" label added
-    │
-    ▼
-┌──────────────────┐     fail
-│ Enrich PR Desc.  │ ──────────► Pipeline STOP
-│ (opened/rerun)   │  (skipped on synchronize = OK)
-└─────┬────────────┘
-      │ pass/skip
-      ▼
-┌─────────────┐     fail
-│  Checkstyle │ ──────────► Pipeline STOP
-└─────┬───────┘
-      │ pass
-      ▼
-┌─────────────┐     fail
-│ Unit Tests  │ ──────────► Pipeline STOP
-└─────┬───────┘
-      │ pass
-      ▼
-┌───────────────────┐
-│  Claude Code      │ ──────────► Focus: Logic, Architecture, Context
-│  Actions Review   │
-└───────────────────┘
-      │
-      ▼
-┌───────────────────┐
-│ Cleanup: remove   │  (only on "rerun" label trigger)
-│ "rerun" label     │
-└───────────────────┘
+PR opened / "rerun" label          PR synchronize (code push)
+    │                                    │
+    ▼                                    │
+┌──────────────────┐     fail            │
+│ Enrich PR Desc.  │ ────► STOP          │
+│ (opened/rerun)   │                     │
+└─────┬────────────┘                     │
+      │ pass/skip                        │
+      ▼                                  ▼
+┌─────────────────────────────────────────┐     fail
+│  Checkstyle                             │ ────► STOP
+│  (runs on every trigger)                │
+└─────────────────┬───────────────────────┘
+                  │ pass
+                  ▼
+┌─────────────────────────────────────────┐     fail
+│  Unit Tests                             │ ────► STOP
+│  (runs on every trigger)                │
+└─────────────────┬───────────────────────┘
+                  │ pass
+                  ▼
+┌─────────────────────────────────────────┐
+│  Claude Code Actions Review             │ ──► Logic, Architecture, Context
+└─────────────────┬───────────────────────┘
+                  │
+                  ▼
+┌─────────────────────────────────────────┐
+│  Cleanup: remove "rerun" label          │  (only on "rerun" trigger)
+└─────────────────────────────────────────┘
 ```
+
+**Key behavior:** On `synchronize` (code push to PR), `enrich-description` is skipped but
+`checkstyle → test → claude-review` run normally. Each job uses `always()` with explicit
+success check on its dependency to avoid being skipped when upstream jobs are skipped.
 
 ### Branch Naming Convention
 

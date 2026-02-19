@@ -134,23 +134,35 @@ spring.ai.openai.chat.options.temperature=0.1
 ## 6. CI/CD Pipeline
 
 ```
-PR Created
-    │
-    ▼
-┌─────────────┐     fail
-│  Checkstyle │ ──────────► Pipeline STOP
-└─────┬───────┘
-      │ pass
-      ▼
-┌─────────────┐     fail
-│ Unit Tests  │ ──────────► Pipeline STOP
-└─────┬───────┘
-      │ pass
-      ▼
-┌───────────────────┐
-│  Claude Code      │ ──────────► Focus: Logic, Architecture, Context
-│  Actions Review   │
-└───────────────────┘
+PR opened / "rerun" label          PR synchronize (code push)
+    │                                    │
+    ▼                                    │
+┌──────────────────┐                     │
+│ Enrich PR Desc.  │                     │
+│ (opened/rerun)   │                     │
+└─────┬────────────┘                     │
+      │ pass/skip                        │
+      ▼                                  ▼
+┌─────────────────────────────────────────┐     fail
+│  Checkstyle                             │ ────► STOP
+└─────────────────┬───────────────────────┘
+                  │ pass
+                  ▼
+┌─────────────────────────────────────────┐     fail
+│  Unit Tests                             │ ────► STOP
+└─────────────────┬───────────────────────┘
+                  │ pass
+                  ▼
+┌─────────────────────────────────────────┐
+│  Claude Code Actions Review             │ ──► Logic, Architecture
+└─────────────────┬───────────────────────┘
+                  │
+                  ▼
+┌─────────────────────────────────────────┐
+│  Cleanup: remove "rerun" label          │  (only on "rerun" trigger)
+└─────────────────────────────────────────┘
 ```
 
-Pipeline simplified vs. original CLAUDE.md: SonarQube omitted (too complex for POC). Copilot replaced with Claude Code Actions.
+On every code push (`synchronize`), the full chain `checkstyle → test → claude-review` runs.
+Enrichment only runs on PR open or `rerun` label. Each job uses `always()` with explicit
+success check on its dependency to propagate correctly when upstream jobs are skipped.
