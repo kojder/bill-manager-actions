@@ -136,22 +136,35 @@
 
 ## Phase 2: Upload Module (upload/)
 
-### Task 6: File Validation
+### Task 6: File Validation ✅ COMPLETED
+
+**Status:** Merged to master (PR #5)
 
 **Description:** File validation service: MIME type by content (magic bytes), size limit, filename sanitization.
 
 **Scope:**
 - New: `src/main/java/.../upload/FileValidationService.java` (interface)
 - New: `src/main/java/.../upload/FileValidationServiceImpl.java` (implementation)
+- New: `src/main/java/.../upload/FileValidationException.java` (custom exception with ErrorCode enum)
+- Modified: `CLAUDE.md` — added `final` modifier convention to Code Conventions
 - Tests: various file types (valid/invalid MIME), oversized file, malicious filename (`../../etc/passwd`)
 
 **Claude review:** **CLAUDE.md Upload Module review rules**
 
 **Expected review points:**
-- [ ] MIME validation by file content (magic bytes), not by extension
-- [ ] Size check BEFORE loading entire file into memory
-- [ ] Path traversal protection (sanitize `..`, path separators)
-- [ ] Whitelist of allowed MIME types
+- [x] MIME validation by file content (magic bytes), not by extension
+- [x] Size check BEFORE loading entire file into memory
+- [x] Path traversal protection (sanitize `..`, path separators)
+- [x] Whitelist of allowed MIME types
+
+**Implementation notes:**
+- Custom magic bytes detection for JPEG (`FF D8 FF`), PNG (`89 50 4E 47...`), PDF (`%PDF`) — no external dependency
+- File size validated via `MultipartFile.getSize()` (metadata) before any content read
+- Filename sanitization: path separators → `_`, `..` removal, control char filtering, leading dot stripping, 255 char limit
+- `FileValidationException` with `ErrorCode` enum: `FILE_REQUIRED`, `FILE_TOO_LARGE`, `UNSUPPORTED_MEDIA_TYPE`, `FILE_UNREADABLE`
+- Constructor overload with `Throwable cause` for exception chaining (IOException in MIME detection)
+- Code review findings addressed: `RuntimeException` → `FileValidationException(FILE_UNREADABLE)`, missing `final` on parameter
+- `final` modifier convention added to CLAUDE.md (excluding interface method parameters — Checkstyle RedundantModifier)
 
 **Size:** M
 
