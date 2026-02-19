@@ -109,7 +109,9 @@ public class FileValidationServiceImpl implements FileValidationService {
       }
       return null;
     } catch (final IOException e) {
-      throw new RuntimeException("Failed to read file content for MIME detection", e);
+      throw new FileValidationException(
+          FileValidationException.ErrorCode.FILE_UNREADABLE,
+          "Failed to read file content for MIME type detection", e);
     }
   }
 

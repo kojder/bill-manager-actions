@@ -5,11 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.bill_manager.config.UploadProperties;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
 class FileValidationServiceImplTest {
 
@@ -149,6 +152,22 @@ class FileValidationServiceImplTest {
           .isInstanceOf(FileValidationException.class)
           .extracting(e -> ((FileValidationException) e).getErrorCode())
           .isEqualTo(FileValidationException.ErrorCode.UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    @Test
+    void shouldThrowFileUnreadableWhenInputStreamFails() {
+      final MultipartFile brokenFile = new MockMultipartFile(
+          "file", "test.jpg", "image/jpeg", new byte[]{1, 2, 3}) {
+        @Override
+        public InputStream getInputStream() throws IOException {
+          throw new IOException("Simulated read failure");
+        }
+      };
+
+      assertThatThrownBy(() -> service.validateFile(brokenFile))
+          .isInstanceOf(FileValidationException.class)
+          .extracting(e -> ((FileValidationException) e).getErrorCode())
+          .isEqualTo(FileValidationException.ErrorCode.FILE_UNREADABLE);
     }
   }
 
