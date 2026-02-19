@@ -119,6 +119,18 @@ public record BillAnalysisResult(
 ) {}
 ```
 
+### Use of `final`
+
+Use `final` wherever a variable, parameter, or field should not be reassigned:
+- **Constructor parameters**: `FileValidationServiceImpl(final UploadProperties uploadProperties)`
+- **Method parameters**: `public void validateFile(final MultipartFile file)`
+- **Local variables**: when the variable is assigned once and never reassigned
+- **Private fields** injected via constructor: `private final UploadProperties uploadProperties;`
+- **Catch block variables**: `catch (final IOException e)`
+- **NOT in interface method signatures** — Checkstyle (Google Style) treats `final` on interface parameters as redundant
+
+This makes intent explicit, prevents accidental reassignment, and improves code readability.
+
 ### Spring AI Integration
 
 Use Spring AI interfaces (`ChatModel`, `ChatClient`) instead of direct HTTP clients for LLM communication.
