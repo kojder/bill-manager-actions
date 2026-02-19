@@ -60,5 +60,8 @@
         <!-- Modifiers -->
         <module name="ModifierOrder"/>
         <module name="RedundantModifier"/>
+
+        <!-- Final parameters on methods, constructors, catch and for-each -->
+        <module name="FinalParameters"/>
     </module>
 </module>
