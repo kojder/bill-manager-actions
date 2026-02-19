@@ -30,7 +30,25 @@ Build an application for automated bill analysis (images/PDF) using LLMs (Groq) 
 4. **AI Analysis**: Spring AI `ChatClient` with Structured Output (extraction of: items, unit prices, total amount, category tags)
 5. **Result**: JSON response with analysis result, retrievable via `GET /api/bills/{id}`
 
-## 4. CI Pipeline & Automated Code Review
+## 4. Checkstyle — Static Code Analysis
+
+The project uses [Checkstyle](https://checkstyle.org/) (v10.23.1) for static code analysis, enforced as a blocking CI step. Configuration is defined in `checkstyle.xml` with modules organized by category:
+
+- **Imports**: no star imports, no unused/redundant imports
+- **Naming**: Java conventions for types, methods, variables, constants, packages
+- **Coding**: equals/hashCode contract, boolean simplification, switch default, fall-through
+- **Blocks**: brace style, no empty blocks
+- **Whitespace**: spacing around operators and keywords
+- **Modifiers**: modifier order, redundant modifiers, `final` on parameters
+
+```bash
+# Run Checkstyle locally
+./mvnw checkstyle:check
+```
+
+For detailed module list see `checkstyle.xml` and [Checkstyle documentation](https://checkstyle.org/checks.html).
+
+## 5. CI Pipeline & Automated Code Review
 
 ### Pipeline Flow
 
@@ -82,7 +100,7 @@ Path-specific review rules are defined in `CLAUDE.md` under "Path-Specific Revie
 | `**/upload/**` | MIME validation (magic bytes), file size limits, path traversal |
 | `**/config/**` | Secrets exposure, hardcoded values, env separation |
 
-## 5. Project Setup
+## 6. Project Setup
 
 - **Project**: Maven
 - **Language**: Java 17
@@ -103,7 +121,7 @@ Path-specific review rules are defined in `CLAUDE.md` under "Path-Specific Revie
 ./mvnw spring-boot:run
 ```
 
-## 6. Documentation
+## 7. Documentation
 
 - `./ai/prd.md` — Product requirements, user stories, MVP scope
 - `./ai/tech-stack.md` — Technology stack, architecture, module structure

@@ -12,7 +12,7 @@
 | Reactive | Spring WebFlux | - | Reactive operations (Groq communication) |
 | Validation | Bean Validation (Jakarta) | - | Standard DTO validation |
 | Build | Maven (wrapper) | 3.9.12 | mvnw included in repository |
-| Linter | Checkstyle | - | Google Java Style, blocking in CI |
+| Linter | Checkstyle | 10.23.1 | Static code analysis, blocking in CI |
 | CI/CD | GitHub Actions | - | Native integration with Claude Code Actions Review |
 | Code Review | Claude Code Actions | v1 | Automated review via `anthropics/claude-code-action` |
 | Utility | Lombok | - | Boilerplate reduction |
@@ -100,7 +100,67 @@ com.example.bill_manager/
 | Added `exception/` | Centralized error handling with `@ControllerAdvice` instead of scattered try-catch blocks. |
 | Added `config/` | Dedicated configuration — exercised by CLAUDE.md Config Module review rules in Claude Code Actions review. |
 
-## 4. Groq API Integration
+## 4. Checkstyle — Static Code Analysis
+
+Checkstyle is a static analysis tool that enforces coding conventions and style rules at compile time
+(no application execution required). It parses Java source files into an AST (Abstract Syntax Tree)
+and runs configurable modules (rules) against it.
+
+- **Documentation**: https://checkstyle.org/
+- **Available modules**: https://checkstyle.org/checks.html
+
+### Configuration
+
+| File | Purpose |
+|------|---------|
+| `checkstyle.xml` | Module configuration — list of active rules |
+| `pom.xml` (maven-checkstyle-plugin) | Maven integration — config location, fail policy, severity |
+
+### How It Works
+
+```
+./mvnw checkstyle:check
+        │
+        ▼
+maven-checkstyle-plugin (pom.xml)
+        │  reads configLocation = checkstyle.xml
+        ▼
+Checker (root module)
+├── FileTabCharacter          ← file-level checks
+├── LineLength (max 120)
+└── TreeWalker                ← parses Java AST
+    ├── AvoidStarImport       ← import rules
+    ├── UnusedImports
+    ├── TypeName              ← naming rules
+    ├── EqualsHashCode        ← coding rules
+    ├── LeftCurly             ← block checks
+    ├── WhitespaceAround      ← whitespace rules
+    ├── ModifierOrder         ← modifier rules
+    ├── FinalParameters       ← enforces final on parameters
+    └── ...
+```
+
+### Active Modules
+
+Modules are organized in `checkstyle.xml` by category:
+
+| Category | Modules | Purpose |
+|----------|---------|---------|
+| Imports | `AvoidStarImport`, `UnusedImports`, `RedundantImport` | Clean import statements |
+| Naming | `TypeName`, `MethodName`, `ConstantName`, `LocalVariableName`, `MemberName`, `PackageName`, `ParameterName` | Java naming conventions |
+| Coding | `EqualsHashCode`, `SimplifyBooleanExpression`, `SimplifyBooleanReturn`, `EmptyStatement`, `MissingSwitchDefault`, `FallThrough`, `OneStatementPerLine`, `MultipleVariableDeclarations` | Common coding mistakes |
+| Blocks | `LeftCurly`, `RightCurly`, `NeedBraces`, `EmptyBlock` | Brace style |
+| Whitespace | `WhitespaceAround`, `GenericWhitespace`, `NoWhitespaceBefore` | Spacing rules |
+| Modifiers | `ModifierOrder`, `RedundantModifier`, `FinalParameters` | Modifier usage |
+
+### Known Interaction
+
+`FinalParameters` enforces `final` on method/constructor/catch/for-each parameters.
+`RedundantModifier` flags `final` on interface abstract method parameters as redundant.
+These two modules conflict for interface methods — convention is to skip `final` on interface
+method signatures (documented in CLAUDE.md).
+
+## 5. Groq API Integration
 
 Groq provides an OpenAI-compatible endpoint, allowing the use of Spring AI OpenAI starter without additional configuration.
 
@@ -120,7 +180,7 @@ spring.ai.openai.chat.options.temperature=0.1
 - **@Retryable** (Spring Retry) — Exponential Backoff for transient failures (1s → 2s → 4s, max 3 retries)
 - **Timeout** — 30 seconds per call
 
-## 5. Storage Strategy
+## 6. Storage Strategy
 
 ### MVP (current)
 - **ConcurrentHashMap** in application memory
@@ -131,7 +191,7 @@ spring.ai.openai.chat.options.temperature=0.1
 1. **H2 in-memory** — Spring Data JPA, Flyway migrations, data lost on restart
 2. **PostgreSQL** — Supabase (local Docker) or standalone PostgreSQL
 
-## 6. CI/CD Pipeline
+## 7. CI/CD Pipeline
 
 ```
 PR opened / "rerun" label          PR synchronize (code push)
