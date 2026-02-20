@@ -146,7 +146,20 @@ This is by design — you should never expose API tokens to untrusted fork PRs.
 
 ## Bot Actor Control
 
-All workflows specify which bot actors are allowed to trigger review:
+### Workflow-Level Filter (claude.yml)
+
+The Interactive Claude workflow rejects all bot-generated events at the job level:
+
+```yaml
+if: |
+  !endsWith(github.actor, '[bot]') && ...
+```
+
+This prevents the CI review's inline comments (posted by `claude[bot]`) from triggering redundant workflow runs. Combined with removing `pull_request_review` and `pull_request_review_comment` triggers, this eliminates ~14 noise runs per review cycle.
+
+### Action-Level Filter (allowed_bots)
+
+All workflows specify which bot actors are allowed to interact with Claude when the workflow does run:
 
 ```yaml
 allowed_bots: "claude[bot],github-actions[bot]"
@@ -186,6 +199,6 @@ Regardless of which workflow is running, Claude **cannot**:
 
 ---
 
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-20*
 
 *Sources: `.github/workflows/ci.yml` (permissions, allowedTools), `.github/workflows/claude.yml` (permissions, allowedTools), `.github/workflows/pattern-police.yml` (permissions, allowedTools), `docs/claude-actions-context.md` (Security Considerations, Limitations)*

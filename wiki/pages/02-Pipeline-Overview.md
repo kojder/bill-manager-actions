@@ -37,7 +37,7 @@ Each workflow responds to different GitHub events:
 ```mermaid
 graph LR
     PR["Pull Request Event<br/><i>opened, synchronize,<br/>ready_for_review, reopened, labeled</i>"] -->|automatic| CI["ci.yml<br/>CI Pipeline"]
-    COMMENT["@claude Mention<br/><i>issue_comment, pr_review_comment,<br/>pr_review, issues</i>"] -->|on mention| CLAUDE["claude.yml<br/>Interactive Assistant"]
+    COMMENT["@claude Mention<br/><i>issue_comment, issues</i>"] -->|on mention| CLAUDE["claude.yml<br/>Interactive Assistant"]
     MANUAL["Manual Dispatch<br/><i>workflow_dispatch<br/>with PR number</i>"] -->|on demand| PP["pattern-police.yml<br/>Architecture Audit"]
 
     CI -->|artifact| R1["claude-review-report-pr-N"]
@@ -142,6 +142,6 @@ For a deep dive into how CLAUDE.md controls review behavior, see [CLAUDE.MD as R
 
 ---
 
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-20*
 
 *Sources: `.github/workflows/ci.yml`, `.github/workflows/claude.yml`, `.github/workflows/pattern-police.yml`, `docs/claude-actions-context.md`*

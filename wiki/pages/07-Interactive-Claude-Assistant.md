@@ -1,6 +1,6 @@
 # Interactive Claude Assistant
 
-> The `claude.yml` workflow turns Claude into an on-demand assistant — mention `@claude` in any PR comment, review, or issue to get analysis, code suggestions, or direct changes.
+> The `claude.yml` workflow turns Claude into an on-demand assistant — mention `@claude` in any PR comment or issue to get analysis, code suggestions, or direct changes.
 
 ---
 
@@ -34,16 +34,14 @@ graph LR
     DEV["Developer writes comment<br/>containing @claude"] --> EVENT{"Event Type"}
 
     EVENT -->|"PR comment"| IC["issue_comment<br/><i>Comment on PR or issue</i>"]
-    EVENT -->|"Review comment"| RC["pull_request_review_comment<br/><i>Comment on specific code line</i>"]
-    EVENT -->|"Full review"| RV["pull_request_review<br/><i>Review with @claude in body</i>"]
     EVENT -->|"New issue"| IS["issues<br/><i>Issue title or body contains @claude</i>"]
 
     IC --> CLAUDE["Claude Assistant runs"]
-    RC --> CLAUDE
-    RV --> CLAUDE
     IS --> CLAUDE
     CLAUDE --> RESPONSE["Claude responds in-context"]
 ```
+
+> **Note:** The workflow only triggers on `issue_comment` and `issues` events. PR comments are `issue_comment` events in GitHub's API (since PRs are issues), so `@claude` in a normal PR comment works. Review-level triggers (`pull_request_review`, `pull_request_review_comment`) were removed to prevent noise — the CI review job posts inline comments as `claude[bot]`, and each would trigger a redundant (skipped) workflow run. Bot actors are also filtered via `!endsWith(github.actor, '[bot]')`.
 
 **Examples of triggering comments:**
 - `@claude Can you explain what this function does?`
@@ -59,10 +57,6 @@ graph LR
 on:
   issue_comment:
     types: [created]
-  pull_request_review_comment:
-    types: [created]
-  pull_request_review:
-    types: [submitted]
   issues:
     types: [opened, assigned]
 ```
@@ -70,21 +64,22 @@ on:
 | Event | Context | When |
 |-------|---------|------|
 | `issue_comment` | PR or issue comment | New comment created containing `@claude` |
-| `pull_request_review_comment` | Review comment on specific line | New inline review comment containing `@claude` |
-| `pull_request_review` | Full PR review | Review submitted with `@claude` in the body |
 | `issues` | Issue | New issue opened or assigned with `@claude` in title/body |
 
 **Filtering condition:**
 
 ```yaml
 if: |
-  (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-  (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-  (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-  (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+  !endsWith(github.actor, '[bot]') &&
+  (
+    (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
+    (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+  )
 ```
 
-Comments that don't contain `@claude` are ignored — the workflow won't trigger.
+**Two layers of filtering:**
+1. **Bot filter** — `!endsWith(github.actor, '[bot]')` rejects all bot-generated events (e.g. `claude[bot]` summary comments from CI review)
+2. **Content filter** — only runs when the comment/issue body actually contains `@claude`
 
 ---
 
@@ -185,6 +180,6 @@ Claude runs `./mvnw test -Dtest=FileValidationServiceImplTest` and summarizes re
 
 ---
 
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-20*
 
 *Sources: `.github/workflows/claude.yml`, `docs/claude-actions-context.md`*
