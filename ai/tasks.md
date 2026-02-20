@@ -241,28 +241,41 @@
 
 ## Phase 3: AI Module (ai/) + Integration
 
-### Task 9: AI Analysis Service (Groq via Spring AI)
+### Task 9: AI Analysis Service (Groq via Spring AI) ✅ COMPLETED
+
+**Status:** Merged to master (PR #XX)
 
 **Description:** Core bill analysis service with LLM. ChatClient from Spring AI, timeout, retry with Exponential Backoff, Structured Output (BeanOutputConverter), graceful degradation.
 
 **Scope:**
 - New: `src/main/java/.../ai/BillAnalysisService.java` (interface)
 - New: `src/main/java/.../ai/BillAnalysisServiceImpl.java` (implementation)
-- Modified: `pom.xml` (spring-boot-starter-aop for @Retryable, if missing)
-- Tests: mocked ChatClient — success, timeout, retry behavior, fallback, structured output parsing
+- New: `src/main/java/.../ai/BillAnalysisException.java` (custom exception with ErrorCode enum)
+- Modified: `src/main/java/.../exception/GlobalExceptionHandler.java` — added `BillAnalysisException` handler
+- Modified: `src/main/resources/application.properties` — HTTP timeout, max-tokens, model change to vision
+- Tests: 17 tests — mocked ChatClient, input validation, retry behavior, structured output parsing, error handling
 
 **Claude review:** **CLAUDE.md AI Module review rules** — KEY TASK
 
 **Expected review points:**
-- [ ] Explicit timeout on every Groq API call (30s)
-- [ ] Retry with Exponential Backoff (1s initial, 3 retries, 2x multiplier)
-- [ ] Prompt size validation before sending
-- [ ] Response token limits in options
-- [ ] Catch ChatClientException and subtypes
-- [ ] Fallback behavior when LLM unavailable
-- [ ] No raw API errors exposed to users
-- [ ] BeanOutputConverter or equivalent for structured output
-- [ ] Parsed output validation before returning
+- [x] Explicit timeout on every Groq API call (30s) — `spring.http.client.read-timeout=30s`
+- [x] Retry with Exponential Backoff (1s initial, 3 retries, 2x multiplier) — `RetryTemplate` + `ExponentialBackOffPolicy` from `GroqApiProperties`
+- [x] Prompt size validation before sending — `validateInput()` checks image size (max 5MB)
+- [x] Response token limits in options — `spring.ai.openai.chat.options.max-tokens=2048`
+- [x] Catch ChatClientException and subtypes — `catch (RestClientException)` + `catch (Exception)` in `executeWithRetry()`
+- [x] Fallback behavior when LLM unavailable — `SERVICE_UNAVAILABLE` error code → HTTP 503
+- [x] No raw API errors exposed to users — all exceptions wrapped in `BillAnalysisException`
+- [x] BeanOutputConverter or equivalent for structured output — `BeanOutputConverter<BillAnalysisResult>` with manual parse + validate
+- [x] Parsed output validation before returning — `parseAndValidateResponse()` checks null, empty, missing items
+
+**Implementation notes:**
+- `ChatClient` fluent API with `ChatClient.Builder` (auto-configured by Spring AI) — `.prompt().user(u -> u.text(...).media(...)).call().content()`
+- `RetryTemplate` (programmatic, from `spring-retry` 2.0.12 — transitive via `spring-ai-retry`) — no `spring-boot-starter-aop` needed
+- `BeanOutputConverter<BillAnalysisResult>` generates JSON schema format instructions appended to user prompt
+- Model changed from `llama-3.3-70b-versatile` (text-only) to `llama-3.2-11b-vision-preview` (vision-capable)
+- `BillAnalysisException` with `ErrorCode` enum: `PROMPT_TOO_LARGE` (400), `ANALYSIS_FAILED` (500), `INVALID_RESPONSE` (500), `SERVICE_UNAVAILABLE` (503)
+- PDF analysis explicitly rejected (vision API does not support PDFs) — clear error message
+- System prompt instructs LLM to extract merchant, line items, total, currency (ISO 4217), and category tags
 
 **Size:** L
 
