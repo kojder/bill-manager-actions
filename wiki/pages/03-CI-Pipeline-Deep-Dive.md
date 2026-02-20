@@ -284,6 +284,12 @@ For the full review prompt and report format, see [Claude Code Review Job](05-Cl
 
 **Design principle:** Each quality gate must pass before the next one runs. There's no point in running an AI code review on code that doesn't compile or has failing tests.
 
+### Workflow File Validation (Expected Failure)
+
+Claude Code Action validates that `ci.yml` on the PR branch matches the version on `master`. PRs that modify `ci.yml` will **always fail** the `claude-review` job with a workflow validation error. This is a security feature, not a bug.
+
+**Workaround:** Merge with `gh pr merge <N> --squash --admin`. After merge, subsequent PRs pass because `master` now has the updated workflow.
+
 ---
 
 ## Permissions Summary

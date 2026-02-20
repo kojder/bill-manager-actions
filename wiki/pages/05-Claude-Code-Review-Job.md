@@ -34,6 +34,8 @@ This means Claude only reviews code that:
 
 This is intentional — there's no point in AI review of code that doesn't compile or has failing tests.
 
+**Known limitation:** Claude Code Action validates that the workflow file (`ci.yml`) on the PR branch is identical to the version on `master`. PRs that modify `ci.yml` will always fail this job. Workaround: merge with `--admin` flag. See [CI Pipeline Deep Dive — Workflow File Validation](03-CI-Pipeline-Deep-Dive#workflow-file-validation-expected-failure).
+
 ---
 
 ## Prompt Anatomy

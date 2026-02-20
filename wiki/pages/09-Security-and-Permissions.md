@@ -186,6 +186,13 @@ Regardless of which workflow is running, Claude **cannot**:
 | Work across multiple repositories | Single-repo checkout only |
 | Access external APIs or services | No network tools in whitelist |
 | Push commits (in CI review and Pattern Police) | No `git push` in allowed tools |
+| Review PRs that modify workflow files | Workflow file validation requires matching `master` |
+
+### Workflow File Validation
+
+Claude Code Action enforces that the workflow file invoking it (`ci.yml`) must be identical on the PR branch and the default branch. This prevents malicious PRs from modifying the review workflow to bypass security controls.
+
+**Impact:** PRs that legitimately modify `ci.yml` (e.g., adding CI steps) will fail the `claude-review` job. The workaround is merging with `gh pr merge <N> --squash --admin`.
 
 ---
 

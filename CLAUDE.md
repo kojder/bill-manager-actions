@@ -325,6 +325,14 @@ Pipeline is defined in `.github/workflows/`:
   - Reads path-specific review rules and verifies package boundaries in PR diff
   - Report uploaded as artifact (`pattern-audit-pr-{N}`)
 
+### Workflow File Validation Limitation
+
+Claude Code Action validates that the workflow file invoking it must be identical on the PR branch and the default branch (master). This is a security feature preventing PRs from tampering with the review workflow.
+
+**Consequence:** PRs that modify `ci.yml` will always fail the `claude-review` job with: `Workflow validation failed. The workflow file must exist and have identical content to the version on the repository's default branch.`
+
+**Workaround:** Merge such PRs with `gh pr merge <N> --squash --admin` (bypassing the failed check). After merge, subsequent PRs will pass because master now has the updated workflow. This limitation only affects PRs that directly modify workflow files — all other PRs are unaffected.
+
 ## Related Repositories
 
 - **claude-code-action** (cloned locally): `/home/andrew/projects/review-actions/claude-code-action`
