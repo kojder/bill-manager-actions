@@ -7,7 +7,25 @@ Read at the start of every conversation (referenced from CLAUDE.md).
 
 ## Current Task
 
-_No active task._
+### [W-1] Create spring-java-reviewer Claude Code Skill
+**Source:** ad-hoc
+**Status:** In Progress
+
+#### Steps
+- [x] Scaffold skill with init_skill.py
+- [x] Remove scaffolded example files
+- [x] Write SKILL.md (frontmatter + body)
+- [x] Write references/java-and-solid.md
+- [x] Write references/spring-ecosystem.md
+- [x] Write references/security-guidelines.md
+- [x] Verify skill structure
+- [ ] Commit
+
+#### Notes
+- Local interactive code review skill (complements CI review)
+- Progressive disclosure: SKILL.md lean, references loaded per module
+- All content in English (skill-creator best practice)
+- Covers full target stack: Java 17, Spring Boot 3.5, Spring Security, Data JPA, Integration, AI
 
 <!-- Template for adding a new task:
 
