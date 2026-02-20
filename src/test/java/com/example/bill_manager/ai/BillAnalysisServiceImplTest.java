@@ -10,6 +10,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.bill_manager.config.GroqApiProperties;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -19,6 +21,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClient.CallResponseSpec;
 import org.springframework.ai.chat.client.ChatClient.ChatClientRequestSpec;
 import org.springframework.ai.chat.client.ChatClient.PromptUserSpec;
+import org.springframework.ai.retry.NonTransientAiException;
+import org.springframework.ai.retry.TransientAiException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientException;
 
@@ -58,6 +62,17 @@ class BillAnalysisServiceImplTest {
         "currency": "PLN",
         "categoryTags": null
       }""";
+
+  private static final String JSON_BLANK_MERCHANT = """
+      {
+        "merchantName": "",
+        "items": [
+          {"name": "Milk", "quantity": 1, "unitPrice": 3.49, "totalPrice": 3.49}
+        ],
+        "totalAmount": 3.49,
+        "currency": "",
+        "categoryTags": null
+      }""";
   // spotless:on
 
   private ChatClient.Builder chatClientBuilder;
@@ -83,10 +98,10 @@ class BillAnalysisServiceImplTest {
         new GroqApiProperties(
             "https://api.groq.com/openai/v1",
             "llama-3.2-11b-vision-preview",
-            30,
             new GroqApiProperties.RetryConfig(3, 1000L, 2.0));
 
-    service = new BillAnalysisServiceImpl(chatClientBuilder, properties);
+    final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+    service = new BillAnalysisServiceImpl(chatClientBuilder, properties, validator);
   }
 
   @Nested
@@ -97,7 +112,7 @@ class BillAnalysisServiceImplTest {
       assertThatThrownBy(() -> service.analyze(null, MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .extracting(e -> ((BillAnalysisException) e).getErrorCode())
-          .isEqualTo(BillAnalysisException.ErrorCode.ANALYSIS_FAILED);
+          .isEqualTo(BillAnalysisException.ErrorCode.INVALID_INPUT);
     }
 
     @Test
@@ -105,7 +120,7 @@ class BillAnalysisServiceImplTest {
       assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, null))
           .isInstanceOf(BillAnalysisException.class)
           .extracting(e -> ((BillAnalysisException) e).getErrorCode())
-          .isEqualTo(BillAnalysisException.ErrorCode.ANALYSIS_FAILED);
+          .isEqualTo(BillAnalysisException.ErrorCode.INVALID_INPUT);
     }
 
     @Test
@@ -116,7 +131,7 @@ class BillAnalysisServiceImplTest {
               e -> {
                 final BillAnalysisException ex = (BillAnalysisException) e;
                 assertThat(ex.getErrorCode())
-                    .isEqualTo(BillAnalysisException.ErrorCode.ANALYSIS_FAILED);
+                    .isEqualTo(BillAnalysisException.ErrorCode.UNSUPPORTED_FORMAT);
                 assertThat(ex.getMessage()).contains("PDF");
               });
     }
@@ -214,6 +229,18 @@ class BillAnalysisServiceImplTest {
     }
 
     @Test
+    void shouldRetryOnTransientAiException() {
+      when(callResponseSpec.content())
+          .thenThrow(new TransientAiException("Rate limited"))
+          .thenReturn(VALID_JSON);
+
+      final var result = service.analyze(SAMPLE_IMAGE, MIME_JPEG);
+
+      assertThat(result).isNotNull();
+      verify(callResponseSpec, times(2)).content();
+    }
+
+    @Test
     void shouldThrowServiceUnavailableAfterRetriesExhausted() {
       when(callResponseSpec.content()).thenThrow(new RestClientException("Connection refused"));
 
@@ -225,6 +252,22 @@ class BillAnalysisServiceImplTest {
                 assertThat(ex.getErrorCode())
                     .isEqualTo(BillAnalysisException.ErrorCode.SERVICE_UNAVAILABLE);
                 assertThat(ex.getMessage()).contains("temporarily unavailable");
+              });
+    }
+
+    @Test
+    void shouldThrowServiceUnavailableOnNonTransientAiException() {
+      when(callResponseSpec.content())
+          .thenThrow(new NonTransientAiException("Content policy violation"));
+
+      assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, MIME_JPEG))
+          .isInstanceOf(BillAnalysisException.class)
+          .satisfies(
+              e -> {
+                final BillAnalysisException ex = (BillAnalysisException) e;
+                assertThat(ex.getErrorCode())
+                    .isEqualTo(BillAnalysisException.ErrorCode.SERVICE_UNAVAILABLE);
+                assertThat(ex.getMessage()).doesNotContain("Content policy");
               });
     }
   }
@@ -273,7 +316,22 @@ class BillAnalysisServiceImplTest {
                 final BillAnalysisException ex = (BillAnalysisException) e;
                 assertThat(ex.getErrorCode())
                     .isEqualTo(BillAnalysisException.ErrorCode.INVALID_RESPONSE);
-                assertThat(ex.getMessage()).contains("no line items");
+                assertThat(ex.getMessage()).contains("failed validation");
+              });
+    }
+
+    @Test
+    void shouldThrowInvalidResponseForBlankRequiredFields() {
+      when(callResponseSpec.content()).thenReturn(JSON_BLANK_MERCHANT);
+
+      assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, MIME_JPEG))
+          .isInstanceOf(BillAnalysisException.class)
+          .satisfies(
+              e -> {
+                final BillAnalysisException ex = (BillAnalysisException) e;
+                assertThat(ex.getErrorCode())
+                    .isEqualTo(BillAnalysisException.ErrorCode.INVALID_RESPONSE);
+                assertThat(ex.getMessage()).contains("failed validation");
               });
     }
 

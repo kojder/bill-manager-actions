@@ -2,12 +2,18 @@ package com.example.bill_manager.ai;
 
 import com.example.bill_manager.config.GroqApiProperties;
 import com.example.bill_manager.dto.BillAnalysisResult;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.content.Media;
 import org.springframework.ai.converter.BeanOutputConverter;
+import org.springframework.ai.retry.NonTransientAiException;
+import org.springframework.ai.retry.TransientAiException;
 import org.springframework.retry.RetryCallback;
 import org.springframework.retry.backoff.ExponentialBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
@@ -42,12 +48,16 @@ public class BillAnalysisServiceImpl implements BillAnalysisService {
   private final ChatClient chatClient;
   private final RetryTemplate retryTemplate;
   private final BeanOutputConverter<BillAnalysisResult> outputConverter;
+  private final Validator validator;
 
   public BillAnalysisServiceImpl(
-      final ChatClient.Builder chatClientBuilder, final GroqApiProperties groqApiProperties) {
+      final ChatClient.Builder chatClientBuilder,
+      final GroqApiProperties groqApiProperties,
+      final Validator validator) {
     this.chatClient = chatClientBuilder.defaultSystem(SYSTEM_PROMPT).build();
     this.retryTemplate = buildRetryTemplate(groqApiProperties);
     this.outputConverter = new BeanOutputConverter<>(BillAnalysisResult.class);
+    this.validator = validator;
   }
 
   @Override
@@ -66,15 +76,15 @@ public class BillAnalysisServiceImpl implements BillAnalysisService {
   private void validateInput(final byte[] imageData, final String mimeType) {
     if (imageData == null) {
       throw new BillAnalysisException(
-          BillAnalysisException.ErrorCode.ANALYSIS_FAILED, "Image data must not be null");
+          BillAnalysisException.ErrorCode.INVALID_INPUT, "Image data must not be null");
     }
     if (mimeType == null) {
       throw new BillAnalysisException(
-          BillAnalysisException.ErrorCode.ANALYSIS_FAILED, "MIME type must not be null");
+          BillAnalysisException.ErrorCode.INVALID_INPUT, "MIME type must not be null");
     }
     if (MIME_TYPE_PDF.equals(mimeType)) {
       throw new BillAnalysisException(
-          BillAnalysisException.ErrorCode.ANALYSIS_FAILED,
+          BillAnalysisException.ErrorCode.UNSUPPORTED_FORMAT,
           "PDF analysis is not yet supported. Please upload an image (JPEG or PNG).");
     }
     if (imageData.length > MAX_IMAGE_SIZE_BYTES) {
@@ -100,7 +110,7 @@ public class BillAnalysisServiceImpl implements BillAnalysisService {
                     .call()
                     .content();
               });
-    } catch (final RestClientException e) {
+    } catch (final RestClientException | NonTransientAiException e) {
       LOG.error("Groq API call failed after retries exhausted", e);
       throw new BillAnalysisException(
           BillAnalysisException.ErrorCode.SERVICE_UNAVAILABLE,
@@ -127,16 +137,21 @@ public class BillAnalysisServiceImpl implements BillAnalysisService {
             BillAnalysisException.ErrorCode.INVALID_RESPONSE,
             "Failed to parse analysis response into structured result");
       }
-      if (result.items() == null || result.items().isEmpty()) {
+      final Set<ConstraintViolation<BillAnalysisResult>> violations = validator.validate(result);
+      if (!violations.isEmpty()) {
+        final String msg =
+            violations.stream()
+                .map(v -> v.getPropertyPath() + " " + v.getMessage())
+                .collect(Collectors.joining(", "));
         throw new BillAnalysisException(
             BillAnalysisException.ErrorCode.INVALID_RESPONSE,
-            "Analysis result contains no line items");
+            "Analysis result failed validation: " + msg);
       }
       return result;
     } catch (final BillAnalysisException e) {
       throw e;
     } catch (final Exception e) {
-      LOG.error("Failed to parse LLM response: {}", responseText, e);
+      LOG.error("Failed to parse LLM response (length={})", responseText.length(), e);
       throw new BillAnalysisException(
           BillAnalysisException.ErrorCode.INVALID_RESPONSE, "Failed to parse analysis response", e);
     }
@@ -150,7 +165,10 @@ public class BillAnalysisServiceImpl implements BillAnalysisService {
     final SimpleRetryPolicy retryPolicy =
         new SimpleRetryPolicy(
             properties.retry().maxAttempts(),
-            Map.of(RestClientException.class, true, ResourceAccessException.class, true),
+            Map.of(
+                RestClientException.class, true,
+                ResourceAccessException.class, true,
+                TransientAiException.class, true),
             true);
 
     final RetryTemplate template = new RetryTemplate();

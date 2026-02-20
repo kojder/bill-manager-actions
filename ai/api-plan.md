@@ -113,10 +113,10 @@ Response wrapper with metadata.
 
 ```java
 public record BillAnalysisResponse(
-    String id,
+    UUID id,
     String originalFileName,
-    BillAnalysisResult analysis,
-    LocalDateTime analyzedAt
+    BillAnalysisResult analysis,    // nullable until AI completes
+    Instant analyzedAt
 ) {}
 ```
 
@@ -155,7 +155,7 @@ Standardized error response.
 public record ErrorResponse(
     String code,
     String message,
-    LocalDateTime timestamp
+    Instant timestamp
 ) {}
 ```
 
@@ -185,7 +185,7 @@ All errors returned in standardized format:
 {
   "code": "UNSUPPORTED_MEDIA_TYPE",
   "message": "File type not supported. Allowed: JPEG, PNG, PDF",
-  "timestamp": "2026-02-06T14:30:00"
+  "timestamp": "2026-02-06T14:30:00Z"
 }
 ```
 
@@ -198,5 +198,10 @@ Application error codes:
 | `UNSUPPORTED_MEDIA_TYPE` | Unsupported file type |
 | `ANALYSIS_NOT_FOUND` | Analysis with given ID not found |
 | `INVALID_ID_FORMAT` | ID is not a valid UUID |
-| `AI_SERVICE_UNAVAILABLE` | Groq API unavailable |
+| `INVALID_INPUT` | Missing or null image data / MIME type |
+| `UNSUPPORTED_FORMAT` | PDF upload (vision API does not support PDF) |
+| `PROMPT_TOO_LARGE` | Image exceeds 5MB size limit for analysis |
+| `ANALYSIS_FAILED` | Unexpected error during AI analysis |
+| `INVALID_RESPONSE` | LLM returned unparseable or invalid response |
+| `SERVICE_UNAVAILABLE` | Groq API unavailable after retries exhausted |
 | `INTERNAL_ERROR` | Unexpected server error |

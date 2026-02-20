@@ -100,7 +100,8 @@ public class GlobalExceptionHandler {
   private HttpStatus mapBillAnalysisErrorCodeToStatus(
       final BillAnalysisException.ErrorCode errorCode) {
     return switch (errorCode) {
-      case PROMPT_TOO_LARGE -> HttpStatus.BAD_REQUEST;
+      case INVALID_INPUT, PROMPT_TOO_LARGE -> HttpStatus.BAD_REQUEST;
+      case UNSUPPORTED_FORMAT -> HttpStatus.UNSUPPORTED_MEDIA_TYPE;
       case ANALYSIS_FAILED, INVALID_RESPONSE -> HttpStatus.INTERNAL_SERVER_ERROR;
       case SERVICE_UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
     };

@@ -70,16 +70,23 @@
 com.example.bill_manager/
 ├── BillManagerApplication.java
 ├── config/         # Application configuration
-│   ├── GroqApiProperties.java      # timeout, retry, base-url, model
+│   ├── GroqApiProperties.java      # retry, base-url, model
 │   └── UploadProperties.java       # max-size, allowed MIME types
 │
 ├── ai/             # LLM integration (Groq via Spring AI)
-│   └── BillAnalysisService.java    # ChatClient, structured output, retry
+│   ├── BillAnalysisService.java     # Interface
+│   ├── BillAnalysisServiceImpl.java # ChatClient, structured output, retry
+│   └── BillAnalysisException.java   # Custom exception with ErrorCode enum
 │
 ├── upload/         # Upload, validation, preprocessing
-│   ├── BillUploadController.java   # REST endpoints
-│   ├── FileValidationService.java  # MIME, size, sanitization
-│   └── ImagePreprocessingService.java  # resize, strip EXIF
+│   ├── BillUploadController.java    # REST endpoints
+│   ├── BillResultStore.java         # In-memory storage (ConcurrentHashMap)
+│   ├── FileValidationService.java   # Interface
+│   ├── FileValidationServiceImpl.java # MIME magic bytes, size, filename
+│   ├── FileValidationException.java # Custom exception with ErrorCode enum
+│   ├── ImagePreprocessingService.java    # Interface
+│   ├── ImagePreprocessingServiceImpl.java # resize, strip EXIF
+│   └── ImagePreprocessingException.java  # Custom exception with ErrorCode enum
 │
 ├── dto/            # Java Records (immutable DTOs)
 │   ├── BillAnalysisResult.java     # AI analysis result
@@ -88,7 +95,8 @@ com.example.bill_manager/
 │   └── ErrorResponse.java          # standardized error
 │
 └── exception/      # Global error handling
-    └── GlobalExceptionHandler.java # @ControllerAdvice
+    ├── GlobalExceptionHandler.java  # @ControllerAdvice
+    └── AnalysisNotFoundException.java
 ```
 
 ### Structural Decisions
@@ -168,17 +176,19 @@ Groq provides an OpenAI-compatible endpoint, allowing the use of Spring AI OpenA
 
 ```properties
 spring.ai.openai.api-key=${GROQ_API_KEY}
-spring.ai.openai.base-url=https://api.groq.com/openai
-spring.ai.openai.chat.options.model=llama-3.3-70b-versatile
-spring.ai.openai.chat.options.temperature=0.1
+spring.ai.openai.base-url=https://api.groq.com/openai/v1
+spring.ai.openai.chat.options.model=llama-3.2-11b-vision-preview
+spring.ai.openai.chat.options.temperature=0.3
+spring.ai.openai.chat.options.max-tokens=2048
 ```
 
 ### Integration Pattern
 
 - **ChatClient** (Spring AI) — primary interface for LLM communication
 - **BeanOutputConverter** — conversion of LLM response to Java Records (structured output)
-- **@Retryable** (Spring Retry) — Exponential Backoff for transient failures (1s → 2s → 4s, max 3 retries)
-- **Timeout** — 30 seconds per call
+- **RetryTemplate** (Spring Retry, programmatic) — Exponential Backoff for transient failures (1s → 2s → 4s, max 3 retries)
+- **jakarta.validation.Validator** — Bean Validation of parsed LLM output
+- **Timeout** — 30 seconds per call (`spring.http.client.read-timeout`)
 
 ## 6. Storage Strategy
 

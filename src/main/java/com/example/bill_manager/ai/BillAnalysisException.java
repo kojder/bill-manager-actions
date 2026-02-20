@@ -6,6 +6,8 @@ import lombok.Getter;
 public class BillAnalysisException extends RuntimeException {
 
   public enum ErrorCode {
+    INVALID_INPUT,
+    UNSUPPORTED_FORMAT,
     PROMPT_TOO_LARGE,
     ANALYSIS_FAILED,
     INVALID_RESPONSE,

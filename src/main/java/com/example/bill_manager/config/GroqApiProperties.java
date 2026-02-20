@@ -14,9 +14,6 @@ public record GroqApiProperties(
     String baseUrl,
     @NotBlank(message = "Model name must not be blank")
     String model,
-    @NotNull(message = "Timeout must not be null")
-    @Min(value = 1, message = "Timeout must be at least 1 second")
-    Integer timeoutSeconds,
     @NotNull(message = "Retry configuration must not be null")
     RetryConfig retry) {
 
