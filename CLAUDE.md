@@ -26,6 +26,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Run single test class
 ./mvnw test -Dtest=BillManagerApplicationTests
 
+# Auto-fix formatting (run before commit)
+./mvnw spotless:apply
+
+# Check formatting (CI gate)
+./mvnw spotless:check
+
+# Run checkstyle
+./mvnw checkstyle:check
+
 # Run application
 ./mvnw spring-boot:run
 
@@ -159,6 +168,15 @@ Use `final` wherever a variable, parameter, or field should not be reassigned:
 
 This makes intent explicit, prevents accidental reassignment, and improves code readability.
 
+### Auto-formatting with Spotless
+
+The project uses `spotless-maven-plugin` with `google-java-format` (GOOGLE style, 2-space indent).
+
+- `./mvnw spotless:apply` — auto-fix all formatting issues (run before commit)
+- `./mvnw spotless:check` — verify formatting (CI gate, runs before checkstyle)
+- `.editorconfig` — IDE-agnostic indent settings (2-space for all file types)
+- Use `// spotless:off` / `// spotless:on` comments to exclude code blocks where google-java-format produces lines exceeding 120 characters (e.g., Records with multiple validation annotations)
+
 ### Spring AI Integration
 
 Use Spring AI interfaces (`ChatModel`, `ChatClient`) instead of direct HTTP clients for LLM communication.
@@ -189,7 +207,7 @@ This repository uses Claude Code Actions (`anthropics/claude-code-action@v1`) fo
 
 **DO NOT Review** (handled by CI automation):
 
-- Code formatting (Checkstyle)
+- Code formatting (Spotless + Checkstyle)
 - Import ordering
 - Variable naming conventions
 - Missing semicolons or spaces
@@ -253,7 +271,7 @@ PR opened / "rerun" label          PR synchronize (code push)
       │ pass/skip                        │
       ▼                                  ▼
 ┌─────────────────────────────────────────┐     fail
-│  Checkstyle                             │ ────► STOP
+│  Spotless (formatting) + Checkstyle     │ ────► STOP
 │  (runs on every trigger)                │
 └─────────────────┬───────────────────────┘
                   │ pass
@@ -276,7 +294,7 @@ PR opened / "rerun" label          PR synchronize (code push)
 ```
 
 **Key behavior:** On `synchronize` (code push to PR), `enrich-description` is skipped but
-`checkstyle → test → claude-review` run normally. Each job uses `always()` with explicit
+`spotless+checkstyle → test → claude-review` run normally. Each job uses `always()` with explicit
 success check on its dependency to avoid being skipped when upstream jobs are skipped.
 
 ### Branch Naming Convention
@@ -301,7 +319,7 @@ Pipeline is defined in `.github/workflows/`:
   - Triggers: `opened`, `synchronize`, `ready_for_review`, `reopened`, `labeled` (rerun only)
   - Claude review produces structured report uploaded as artifact (`claude-review-report-pr-{N}`)
 - **claude.yml** — Interactive @claude mentions (on PRs and issues)
-  - Scoped `--allowedTools` whitelist: Read, Write, Edit, gh CLI (pr/issue), git (diff/log/status), mvnw (checkstyle/test)
+  - Scoped `--allowedTools` whitelist: Read, Write, Edit, gh CLI (pr/issue), git (diff/log/status), mvnw (spotless/checkstyle/test)
 - **pattern-police.yml** — On-demand architecture drift checker (`workflow_dispatch`)
   - Input: `pr_number`, optional `rules_path` (defaults to `CLAUDE.md`)
   - Reads path-specific review rules and verifies package boundaries in PR diff
