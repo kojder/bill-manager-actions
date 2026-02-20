@@ -101,8 +101,8 @@ In addition to the main CI pipeline, the following manual workflows are availabl
 ### Tool Restrictions (Security)
 
 All Claude workflows use scoped `--allowedTools` whitelists:
-- **ci.yml** (review): inline comments, `gh pr` commands, report writing
-- **claude.yml** (interactive): Read/Write/Edit, `gh pr/issue` commands, `git diff/log/status`, `./mvnw checkstyle:check`, `./mvnw test`
+- **ci.yml** (review): Glob, Grep, Read, inline comments, `gh pr` commands, report writing
+- **claude.yml** (interactive): Read/Write/Edit, `gh pr/issue` commands, `git diff/log/status`, `./mvnw spotless:check/apply`, `./mvnw checkstyle:check`, `./mvnw test`
 - **pattern-police.yml** (audit): report writing, `gh pr diff/view`
 
 ### Context Management (`CLAUDE.md`)

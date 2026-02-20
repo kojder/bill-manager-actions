@@ -254,7 +254,7 @@ For the full Checkstyle configuration, see [Checkstyle Configuration](10-Checkst
 - Allowed tools: `Glob`, `Grep`, `Read`, inline comments, `gh pr` commands, `Write` (for reports)
 - Claude may read related files (interfaces, callers) beyond the diff — max 5 extra file reads
 - Claude cannot modify source code — only writes to `reports/`
-- `--max-turns 15` limits token consumption per review
+- `--max-turns 20` limits token consumption per review
 - `use_sticky_comment: true` — edits a single comment instead of posting new ones on each push
 - Uses `CLAUDE_CODE_OAUTH_TOKEN` secret for authentication
 

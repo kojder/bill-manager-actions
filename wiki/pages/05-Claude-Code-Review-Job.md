@@ -58,12 +58,27 @@ Claude receives the repository name and PR number as structured input.
 You are a Senior Java Developer reviewing this Pull Request.
 ```
 
-### Pre-Review Instructions
+### Token Budget Rules
 
 ```
-IMPORTANT: Before reviewing code, read the PR description using `gh pr view`.
-The "Task Reference" section contains the task context from ./ai/tasks.md,
-including expected review points. Use this as additional review guidance.
+- Use `gh pr diff` as your PRIMARY source of changes
+- Use `Read` tool for file contents — NEVER use `gh api` to read files
+- Use `Write` tool to create report files — it auto-creates directories, no `mkdir` needed
+- You MAY read related files (interfaces, parent classes, callers, test counterparts)
+  when needed to verify correctness — keep it targeted (max 5 extra file reads)
+- Use `Grep`/`Glob` to find related code — this is cheaper than reading full files
+- Do NOT read unrelated files (README, wiki/, build configs not in the diff)
+```
+
+These rules minimize token usage by directing Claude to use the diff as primary input and limiting extra file reads.
+
+### Context Gathering (ordered)
+
+```
+1. Run `gh pr view` to read PR description and task context
+2. Run `gh pr diff` to get the full diff
+3. Read CLAUDE.md for review rules (this file is always relevant)
+4. Only then use `Read` for specific files if the diff alone is insufficient
 ```
 
 This tells Claude to read the enriched PR description before starting the review, ensuring it knows what the PR is supposed to accomplish and what findings are expected.
@@ -243,7 +258,7 @@ The claude-review job has a strict `allowedTools` whitelist:
 
 ```yaml
 claude_args: |
-  --max-turns 15
+  --max-turns 20
   --allowedTools "Glob,Grep,Read,
                   mcp__github_inline_comment__create_inline_comment,
                   Bash(gh pr comment:*),
@@ -264,7 +279,7 @@ claude_args: |
 | `Write` | Write the structured report file |
 
 Additional configuration:
-- `--max-turns 15` — limits the number of agentic turns to control token consumption
+- `--max-turns 20` — limits the number of agentic turns to control token consumption
 - `use_sticky_comment: true` — edits a single PR comment instead of posting new ones on each push
 
 **What Claude CANNOT do in this job:**

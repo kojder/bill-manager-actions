@@ -51,12 +51,14 @@ Each workflow explicitly declares which tools Claude can use via `--allowedTools
 | `Bash(./mvnw checkstyle:check)` | — | Yes | — |
 | `Bash(./mvnw test)` | — | Yes | — |
 | `Bash(./mvnw test -Dtest:*)` | — | Yes | — |
-| `Bash(mkdir -p reports)` | Yes | — | Yes |
+| `Bash(./mvnw spotless:check)` | — | Yes | — |
+| `Bash(./mvnw spotless:apply)` | — | Yes | — |
+| `Bash(mkdir -p reports)` | — | — | Yes |
 | `mcp__github_inline_comment__*` | Yes | Yes | — |
 
 **Key observations:**
 
-- **CI Review** has `Glob`, `Grep`, and `Read` for contextual code analysis (interfaces, callers, test counterparts) but no `Edit` — it cannot modify source code. Read access is governed by the prompt's token budget rules (max 5 files beyond the diff). It can write only to the `reports/` directory and post comments.
+- **CI Review** has `Glob`, `Grep`, and `Read` for contextual code analysis (interfaces, callers, test counterparts) but no `Edit` — it cannot modify source code. Read access is governed by the prompt's token budget rules (max 5 files beyond the diff). It uses `Write` tool for report creation (auto-creates directories). It can post comments via `gh pr comment` and inline comments via MCP.
 - **Interactive Claude** has the broadest tool set — it can read, write, edit files, run tests, and interact with Git history. This is appropriate because it's developer-initiated.
 - **Pattern Police** is the most restricted — it can only read the PR diff, view PR metadata, and write a report. No commenting, no file reading, no builds.
 

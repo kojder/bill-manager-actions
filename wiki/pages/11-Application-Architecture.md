@@ -103,9 +103,9 @@ All errors return a standardized `ErrorResponse`:
 
 ```json
 {
-  "code": 415,
+  "code": "UNSUPPORTED_MEDIA_TYPE",
   "message": "Unsupported file type. Allowed: image/jpeg, image/png, application/pdf",
-  "timestamp": "2026-02-19T10:30:00Z"
+  "timestamp": "2026-02-20T10:30:00Z"
 }
 ```
 
@@ -114,7 +114,8 @@ All errors return a standardized `ErrorResponse`:
 | 400 | Missing or empty file |
 | 404 | Analysis result not found |
 | 413 | File exceeds 10MB limit |
-| 415 | Unsupported MIME type |
+| 415 | Unsupported MIME type or format |
+| 422 | Image cannot be read or decoded |
 | 500 | Internal server error |
 | 503 | Groq API unavailable (after retries) |
 

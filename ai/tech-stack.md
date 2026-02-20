@@ -70,8 +70,9 @@
 com.example.bill_manager/
 ├── BillManagerApplication.java
 ├── config/         # Application configuration
-│   ├── GroqApiProperties.java      # retry, base-url, model
-│   └── UploadProperties.java       # max-size, allowed MIME types
+│   ├── ApiKeyValidator.java         # Fail-fast startup validation
+│   ├── GroqApiProperties.java       # retry, base-url, model
+│   └── UploadProperties.java        # max-size, allowed MIME types
 │
 ├── ai/             # LLM integration (Groq via Spring AI)
 │   ├── BillAnalysisService.java     # Interface
@@ -214,7 +215,7 @@ PR opened / "rerun" label          PR synchronize (code push)
       │ pass/skip                        │
       ▼                                  ▼
 ┌─────────────────────────────────────────┐     fail
-│  Checkstyle                             │ ────► STOP
+│  Spotless (formatting) + Checkstyle     │ ────► STOP
 └─────────────────┬───────────────────────┘
                   │ pass
                   ▼
@@ -234,7 +235,7 @@ PR opened / "rerun" label          PR synchronize (code push)
 └─────────────────────────────────────────┘
 ```
 
-On every code push (`synchronize`), the full chain `checkstyle → test → claude-review` runs.
+On every code push (`synchronize`), the full chain `spotless+checkstyle → test → claude-review` runs.
 Enrichment only runs on PR open or `rerun` label. Each job uses `always()` with explicit
 success check on its dependency to propagate correctly when upstream jobs are skipped.
 

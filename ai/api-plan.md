@@ -55,7 +55,8 @@ Upload a bill file and trigger automatic AI analysis.
 | 201 | Success — file uploaded and analyzed |
 | 400 | Missing file in request or empty file |
 | 413 | File exceeds size limit (10MB) |
-| 415 | Unsupported MIME type (not JPEG/PNG/PDF) |
+| 415 | Unsupported MIME type (not JPEG/PNG/PDF) or unsupported format (PDF for vision API) |
+| 422 | Image cannot be read or decoded (corrupt/unsupported image data) |
 | 500 | Internal server error |
 | 503 | Groq API unavailable (after retries exhausted) |
 
@@ -196,6 +197,9 @@ Application error codes:
 | `FILE_REQUIRED` | No file in request |
 | `FILE_TOO_LARGE` | Exceeded 10MB limit |
 | `UNSUPPORTED_MEDIA_TYPE` | Unsupported file type |
+| `FILE_UNREADABLE` | File content cannot be read |
+| `IMAGE_READ_FAILED` | Image cannot be decoded (corrupt/unsupported) |
+| `PREPROCESSING_FAILED` | Unexpected error during image preprocessing |
 | `ANALYSIS_NOT_FOUND` | Analysis with given ID not found |
 | `INVALID_ID_FORMAT` | ID is not a valid UUID |
 | `INVALID_INPUT` | Missing or null image data / MIME type |
