@@ -207,7 +207,8 @@ jobs:
 
             ## Token Budget Rules
             - Use `gh pr diff` as your PRIMARY source of changes
-            - Use `Read` for files in the diff when you need full context beyond the hunks
+            - Use `Read` tool for file contents — NEVER use `gh api` to read files
+            - Use `Write` tool to create report files — it auto-creates directories, no `mkdir` needed
             - You MAY read related files (interfaces, parent classes, callers, test counterparts)
               when needed to verify correctness — keep it targeted (max 5 extra file reads)
             - Use `Grep`/`Glob` to find related code (e.g., who calls a changed method, where
@@ -243,7 +244,7 @@ jobs:
             - Do NOT run build, test, or formatting commands
             - Do NOT push or commit changes
           claude_args: |
-            --max-turns 15
+            --max-turns 20
             --allowedTools "Glob,Grep,Read,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Write"
 
       - name: Upload review report
