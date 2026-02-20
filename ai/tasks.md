@@ -241,28 +241,48 @@
 
 ## Phase 3: AI Module (ai/) + Integration
 
-### Task 9: AI Analysis Service (Groq via Spring AI)
+### Task 9: AI Analysis Service (Groq via Spring AI) ✅ COMPLETED
+
+**Status:** PR #11
 
 **Description:** Core bill analysis service with LLM. ChatClient from Spring AI, timeout, retry with Exponential Backoff, Structured Output (BeanOutputConverter), graceful degradation.
 
 **Scope:**
 - New: `src/main/java/.../ai/BillAnalysisService.java` (interface)
 - New: `src/main/java/.../ai/BillAnalysisServiceImpl.java` (implementation)
-- Modified: `pom.xml` (spring-boot-starter-aop for @Retryable, if missing)
-- Tests: mocked ChatClient — success, timeout, retry behavior, fallback, structured output parsing
+- New: `src/main/java/.../ai/BillAnalysisException.java` (custom exception with ErrorCode enum)
+- Modified: `src/main/java/.../exception/GlobalExceptionHandler.java` — added `BillAnalysisException` handler
+- Modified: `src/main/java/.../config/GroqApiProperties.java` — removed dead `timeoutSeconds` field
+- Modified: `src/main/resources/application.properties` — HTTP timeout, max-tokens, model change to vision
+- Modified: `src/main/resources/application-dev.properties` — removed `groq.api.timeout-seconds`
+- New: `src/test/resources/logback-test.xml` — suppress expected ERROR logs from AI service during tests
+- Tests: 20 tests — mocked ChatClient, input validation, retry behavior (incl. Spring AI exceptions), Bean Validation, error handling
 
 **Claude review:** **CLAUDE.md AI Module review rules** — KEY TASK
 
 **Expected review points:**
-- [ ] Explicit timeout on every Groq API call (30s)
-- [ ] Retry with Exponential Backoff (1s initial, 3 retries, 2x multiplier)
-- [ ] Prompt size validation before sending
-- [ ] Response token limits in options
-- [ ] Catch ChatClientException and subtypes
-- [ ] Fallback behavior when LLM unavailable
-- [ ] No raw API errors exposed to users
-- [ ] BeanOutputConverter or equivalent for structured output
-- [ ] Parsed output validation before returning
+- [x] Explicit timeout on every Groq API call (30s) — `spring.http.client.read-timeout=30s`
+- [x] Retry with Exponential Backoff (1s initial, 3 retries, 2x multiplier) — `RetryTemplate` + `ExponentialBackOffPolicy` from `GroqApiProperties`
+- [x] Prompt size validation before sending — `validateInput()` checks image size (max 5MB)
+- [x] Response token limits in options — `spring.ai.openai.chat.options.max-tokens=2048`
+- [x] Catch Spring AI exceptions — `NonTransientAiException` (catch → SERVICE_UNAVAILABLE), `TransientAiException` (retry), `RestClientException` (retry + catch)
+- [x] Fallback behavior when LLM unavailable — `SERVICE_UNAVAILABLE` error code → HTTP 503
+- [x] No raw API errors exposed to users — all exceptions wrapped in `BillAnalysisException`
+- [x] No PII in logs — LLM response logged by length only, not content
+- [x] BeanOutputConverter or equivalent for structured output — `BeanOutputConverter<BillAnalysisResult>` with manual parse + Bean Validation
+- [x] Parsed output validation before returning — `jakarta.validation.Validator` enforces `@NotBlank`, `@NotEmpty`, `@PositiveOrZero` annotations on `BillAnalysisResult`
+
+**Implementation notes:**
+- `ChatClient` fluent API with `ChatClient.Builder` (auto-configured by Spring AI) — `.prompt().user(u -> u.text(...).media(...)).call().content()`
+- `RetryTemplate` (programmatic, from `spring-retry` 2.0.12 — transitive via `spring-ai-retry`) — no `spring-boot-starter-aop` needed
+- Retry on `RestClientException`, `ResourceAccessException`, `TransientAiException`; catch `NonTransientAiException` as non-retryable
+- `BeanOutputConverter<BillAnalysisResult>` generates JSON schema format instructions appended to user prompt
+- `jakarta.validation.Validator` injected for Bean Validation of parsed LLM output (replaces manual checks)
+- Model changed from `llama-3.3-70b-versatile` (text-only) to `llama-3.2-11b-vision-preview` (vision-capable)
+- `BillAnalysisException` with `ErrorCode` enum: `INVALID_INPUT` (400), `UNSUPPORTED_FORMAT` (415), `PROMPT_TOO_LARGE` (400), `ANALYSIS_FAILED` (500), `INVALID_RESPONSE` (500), `SERVICE_UNAVAILABLE` (503)
+- `timeoutSeconds` removed from `GroqApiProperties` — timeout controlled via `spring.http.client.read-timeout`
+- PDF analysis explicitly rejected (vision API does not support PDFs) — clear error message with `UNSUPPORTED_FORMAT` (415)
+- System prompt instructs LLM to extract merchant, line items, total, currency (ISO 4217), and category tags
 
 **Size:** L
 

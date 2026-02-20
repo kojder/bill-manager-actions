@@ -1,5 +1,6 @@
 package com.example.bill_manager.exception;
 
+import com.example.bill_manager.ai.BillAnalysisException;
 import com.example.bill_manager.dto.ErrorResponse;
 import com.example.bill_manager.upload.FileValidationException;
 import com.example.bill_manager.upload.ImagePreprocessingException;
@@ -64,6 +65,14 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(status).body(response);
   }
 
+  @ExceptionHandler(BillAnalysisException.class)
+  public ResponseEntity<ErrorResponse> handleBillAnalysis(final BillAnalysisException ex) {
+    final HttpStatus status = mapBillAnalysisErrorCodeToStatus(ex.getErrorCode());
+    final ErrorResponse response =
+        new ErrorResponse(ex.getErrorCode().name(), ex.getMessage(), Instant.now());
+    return ResponseEntity.status(status).body(response);
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponse> handleGenericException(final Exception ex) {
     final ErrorResponse response =
@@ -85,6 +94,16 @@ public class GlobalExceptionHandler {
     return switch (errorCode) {
       case IMAGE_READ_FAILED -> HttpStatus.UNPROCESSABLE_ENTITY;
       case PREPROCESSING_FAILED -> HttpStatus.INTERNAL_SERVER_ERROR;
+    };
+  }
+
+  private HttpStatus mapBillAnalysisErrorCodeToStatus(
+      final BillAnalysisException.ErrorCode errorCode) {
+    return switch (errorCode) {
+      case INVALID_INPUT, PROMPT_TOO_LARGE -> HttpStatus.BAD_REQUEST;
+      case UNSUPPORTED_FORMAT -> HttpStatus.UNSUPPORTED_MEDIA_TYPE;
+      case ANALYSIS_FAILED, INVALID_RESPONSE -> HttpStatus.INTERNAL_SERVER_ERROR;
+      case SERVICE_UNAVAILABLE -> HttpStatus.SERVICE_UNAVAILABLE;
     };
   }
 }

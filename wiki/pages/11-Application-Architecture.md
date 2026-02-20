@@ -35,13 +35,14 @@ com.example.bill_manager/
 ├── BillManagerApplication.java      # Spring Boot entry point
 │
 ├── config/                          # Application configuration
-│   ├── GroqApiProperties.java       # Timeout, retry, base-url, model
+│   ├── GroqApiProperties.java       # Retry config, base-url, model
 │   ├── UploadProperties.java        # Max file size, allowed MIME types
 │   └── ApiKeyValidator.java         # Fail-fast startup validation
 │
 ├── ai/                              # LLM integration (Groq via Spring AI)
 │   ├── BillAnalysisService.java     # Interface
-│   └── BillAnalysisServiceImpl.java # ChatClient, structured output, retry
+│   ├── BillAnalysisServiceImpl.java # ChatClient, structured output, retry
+│   └── BillAnalysisException.java   # Custom exception with ErrorCode enum
 │
 ├── upload/                          # Upload, validation, preprocessing
 │   ├── BillUploadController.java    # REST endpoints (POST upload, GET by id)
@@ -50,7 +51,8 @@ com.example.bill_manager/
 │   ├── FileValidationServiceImpl.java # MIME magic bytes, size, filename
 │   ├── FileValidationException.java # Custom exception with ErrorCode enum
 │   ├── ImagePreprocessingService.java    # Interface
-│   └── ImagePreprocessingServiceImpl.java # Resize, EXIF strip
+│   ├── ImagePreprocessingServiceImpl.java # Resize, EXIF strip
+│   └── ImagePreprocessingException.java  # Custom exception with ErrorCode enum
 │
 ├── dto/                             # Data Transfer Objects (Java Records)
 │   ├── BillAnalysisResult.java      # LLM response: merchant, items, total
@@ -150,7 +152,7 @@ public record BillAnalysisResult(
 ```java
 public record LineItem(
     String name,
-    @Positive int quantity,
+    @Positive BigDecimal quantity,
     @PositiveOrZero BigDecimal unitPrice,
     @PositiveOrZero BigDecimal totalPrice
 ) {}
@@ -166,9 +168,11 @@ public record LineItem(
 |----------|--------------|-------------|
 | `spring.ai.openai.api-key` | `${GROQ_API_KEY}` | Groq API key (from env var) |
 | `spring.ai.openai.base-url` | `https://api.groq.com/openai/v1` | Groq endpoint |
-| `spring.ai.openai.chat.options.model` | `llama-3.3-70b-versatile` | LLM model |
+| `spring.ai.openai.chat.options.model` | `llama-3.2-11b-vision-preview` | Vision LLM model |
 | `spring.ai.openai.chat.options.temperature` | `0.3` | Low temp for deterministic analysis |
-| `groq.api.timeout-seconds` | `30` | API call timeout |
+| `spring.ai.openai.chat.options.max-tokens` | `2048` | Response token limit |
+| `spring.http.client.connect-timeout` | `5s` | HTTP connect timeout |
+| `spring.http.client.read-timeout` | `30s` | HTTP read timeout (Groq API) |
 | `groq.api.retry.max-attempts` | `3` | Max retry count |
 | `groq.api.retry.initial-delay-ms` | `1000` | Initial backoff delay |
 | `groq.api.retry.multiplier` | `2.0` | Exponential backoff multiplier |
@@ -180,7 +184,6 @@ public record LineItem(
 
 | Override | Value | Reason |
 |----------|-------|--------|
-| `groq.api.timeout-seconds` | `60` | Longer timeout for dev |
 | `groq.api.retry.max-attempts` | `5` | More retries for dev |
 | `upload.max-file-size-bytes` | `20971520` (20MB) | Lenient for testing |
 | `logging.level.*` | `DEBUG` | Verbose logging |
@@ -212,6 +215,6 @@ For detailed technology decisions, see `ai/tech-stack.md` in the repository.
 
 ---
 
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-20*
 
 *Sources: `ai/tech-stack.md`, `ai/api-plan.md`, `ai/prd.md`, source code tree*

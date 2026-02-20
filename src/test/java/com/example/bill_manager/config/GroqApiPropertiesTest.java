@@ -15,7 +15,6 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
     properties = {
       "groq.api.base-url=https://test.groq.com/api",
       "groq.api.model=test-model",
-      "groq.api.timeout-seconds=45",
       "groq.api.retry.max-attempts=5",
       "groq.api.retry.initial-delay-ms=2000",
       "groq.api.retry.multiplier=3.0"
@@ -29,7 +28,6 @@ class GroqApiPropertiesTest {
     assertThat(properties).isNotNull();
     assertThat(properties.baseUrl()).isEqualTo("https://test.groq.com/api");
     assertThat(properties.model()).isEqualTo("test-model");
-    assertThat(properties.timeoutSeconds()).isEqualTo(45);
   }
 
   @Test
@@ -44,7 +42,6 @@ class GroqApiPropertiesTest {
   void shouldValidateRequiredFields() {
     assertThat(properties.baseUrl()).isNotBlank();
     assertThat(properties.model()).isNotBlank();
-    assertThat(properties.timeoutSeconds()).isPositive();
     assertThat(properties.retry().maxAttempts()).isPositive();
     assertThat(properties.retry().initialDelayMs()).isPositive();
     assertThat(properties.retry().multiplier()).isPositive();
