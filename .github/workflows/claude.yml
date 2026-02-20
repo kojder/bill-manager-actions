@@ -33,4 +33,4 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: "claude[bot],github-actions[bot]"
           claude_args: |
-            --allowedTools "Read,Write,Edit,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(git diff:*),Bash(git log:*),Bash(git status),Bash(./mvnw checkstyle:check),Bash(./mvnw test),Bash(./mvnw test -Dtest:*),mcp__github_inline_comment__create_inline_comment"
+            --allowedTools "Read,Write,Edit,Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh issue comment:*),Bash(git diff:*),Bash(git log:*),Bash(git status),Bash(./mvnw spotless:check),Bash(./mvnw spotless:apply),Bash(./mvnw checkstyle:check),Bash(./mvnw test),Bash(./mvnw test -Dtest:*),mcp__github_inline_comment__create_inline_comment"

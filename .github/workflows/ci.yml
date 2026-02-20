@@ -152,6 +152,9 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Check formatting (Spotless)
+        run: ./mvnw spotless:check
+
       - name: Run Checkstyle
         run: ./mvnw checkstyle:check
 
