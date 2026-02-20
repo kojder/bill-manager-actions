@@ -7,15 +7,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record BillAnalysisResponse(
-    @NotNull
-    UUID id,
-
-    @NotBlank
-    String originalFileName,
-
-    @Valid
-    BillAnalysisResult analysis,
-
-    @NotNull
-    Instant analyzedAt
-) {}
+    @NotNull UUID id,
+    @NotBlank String originalFileName,
+    @Valid BillAnalysisResult analysis,
+    @NotNull Instant analyzedAt) {}

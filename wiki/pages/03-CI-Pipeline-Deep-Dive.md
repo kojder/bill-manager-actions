@@ -71,7 +71,7 @@ graph TD
 | Job | Name | Purpose |
 |-----|------|---------|
 | 1 | `enrich-description` | Extract task number from branch name, parse `ai/tasks.md`, inject context into PR body |
-| 2 | `checkstyle` | Run `./mvnw checkstyle:check` — Google Java Style enforcement |
+| 2 | `checkstyle` | Run Spotless (formatting) + Checkstyle (code rules) — Google Java Style enforcement |
 | 3 | `test` | Run `./mvnw test` — JUnit 5 unit tests |
 | 4 | `claude-review` | Automated AI code review with structured report |
 | 5 | `cleanup-label` | Remove the `rerun` label after pipeline completes |
@@ -214,14 +214,15 @@ For the full enrichment algorithm, see [PR Enrichment and Task Workflow](06-PR-E
 
 ### Job 2: checkstyle
 
-**Purpose:** Enforce Google Java Style via Checkstyle.
+**Purpose:** Enforce code formatting (Spotless) and Google Java Style (Checkstyle).
 
 **Steps:**
 1. **Checkout** repository
 2. **Set up JDK 17** (Temurin distribution, Maven cache enabled)
-3. **Run Checkstyle** — `./mvnw checkstyle:check`
+3. **Check formatting (Spotless)** — `./mvnw spotless:check` (Google Java Format, 2-space indent)
+4. **Run Checkstyle** — `./mvnw checkstyle:check`
 
-**Blocking behavior:** If any Checkstyle violation is found, the job fails and the pipeline stops. Tests and Claude review will not run.
+**Blocking behavior:** If any Spotless or Checkstyle violation is found, the job fails and the pipeline stops. Tests and Claude review will not run.
 
 For the full Checkstyle configuration, see [Checkstyle Configuration](10-Checkstyle-Configuration).
 
@@ -310,6 +311,6 @@ For the full review prompt and report format, see [Claude Code Review Job](05-Cl
 
 ---
 
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-20*
 
 *Sources: `.github/workflows/ci.yml` (complete file), `CLAUDE.md` (pipeline diagram)*

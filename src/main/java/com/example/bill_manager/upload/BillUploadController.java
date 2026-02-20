@@ -22,8 +22,7 @@ public class BillUploadController {
   private final BillResultStore billResultStore;
 
   public BillUploadController(
-      final FileValidationService fileValidationService,
-      final BillResultStore billResultStore) {
+      final FileValidationService fileValidationService, final BillResultStore billResultStore) {
     this.fileValidationService = fileValidationService;
     this.billResultStore = billResultStore;
   }
@@ -35,17 +34,16 @@ public class BillUploadController {
     final String sanitizedFilename =
         fileValidationService.sanitizeFilename(file.getOriginalFilename());
     final UUID id = UUID.randomUUID();
-    final BillAnalysisResponse response = new BillAnalysisResponse(
-        id, sanitizedFilename, null, Instant.now());
+    final BillAnalysisResponse response =
+        new BillAnalysisResponse(id, sanitizedFilename, null, Instant.now());
     billResultStore.save(id, response);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<BillAnalysisResponse> getAnalysisResult(
-      @PathVariable final UUID id) {
-    final BillAnalysisResponse result = billResultStore.findById(id)
-        .orElseThrow(() -> new AnalysisNotFoundException(id));
+  public ResponseEntity<BillAnalysisResponse> getAnalysisResult(@PathVariable final UUID id) {
+    final BillAnalysisResponse result =
+        billResultStore.findById(id).orElseThrow(() -> new AnalysisNotFoundException(id));
     return ResponseEntity.ok(result);
   }
 }

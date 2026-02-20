@@ -22,10 +22,8 @@ class FileValidationServiceImplTest {
 
   @BeforeEach
   void setUp() {
-    final UploadProperties properties = new UploadProperties(
-        MAX_FILE_SIZE,
-        List.of("image/jpeg", "image/png", "application/pdf")
-    );
+    final UploadProperties properties =
+        new UploadProperties(MAX_FILE_SIZE, List.of("image/jpeg", "image/png", "application/pdf"));
     service = new FileValidationServiceImpl(properties);
   }
 
@@ -34,20 +32,22 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldAcceptValidJpegFile() {
-      final byte[] jpegContent = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0,
-          0x00, 0x10, 0x4A, 0x46};
-      final MockMultipartFile file = new MockMultipartFile(
-          "file", "photo.jpg", "image/jpeg", jpegContent);
+      final byte[] jpegContent = {
+        (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00, 0x10, 0x4A, 0x46
+      };
+      final MockMultipartFile file =
+          new MockMultipartFile("file", "photo.jpg", "image/jpeg", jpegContent);
 
       assertThatCode(() -> service.validateFile(file)).doesNotThrowAnyException();
     }
 
     @Test
     void shouldAcceptValidPngFile() {
-      final byte[] pngContent = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-          0x00, 0x00, 0x00, 0x0D};
-      final MockMultipartFile file = new MockMultipartFile(
-          "file", "image.png", "image/png", pngContent);
+      final byte[] pngContent = {
+        (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D
+      };
+      final MockMultipartFile file =
+          new MockMultipartFile("file", "image.png", "image/png", pngContent);
 
       assertThatCode(() -> service.validateFile(file)).doesNotThrowAnyException();
     }
@@ -55,8 +55,8 @@ class FileValidationServiceImplTest {
     @Test
     void shouldAcceptValidPdfFile() {
       final byte[] pdfContent = {0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34};
-      final MockMultipartFile file = new MockMultipartFile(
-          "file", "document.pdf", "application/pdf", pdfContent);
+      final MockMultipartFile file =
+          new MockMultipartFile("file", "document.pdf", "application/pdf", pdfContent);
 
       assertThatCode(() -> service.validateFile(file)).doesNotThrowAnyException();
     }
@@ -75,8 +75,8 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldRejectEmptyFile() {
-      final MockMultipartFile file = new MockMultipartFile(
-          "file", "empty.jpg", "image/jpeg", new byte[0]);
+      final MockMultipartFile file =
+          new MockMultipartFile("file", "empty.jpg", "image/jpeg", new byte[0]);
 
       assertThatThrownBy(() -> service.validateFile(file))
           .isInstanceOf(FileValidationException.class)
@@ -94,8 +94,8 @@ class FileValidationServiceImplTest {
       final byte[] oversizedContent = new byte[(int) MAX_FILE_SIZE + 1];
       System.arraycopy(jpegHeader, 0, oversizedContent, 0, jpegHeader.length);
 
-      final MockMultipartFile file = new MockMultipartFile(
-          "file", "large.jpg", "image/jpeg", oversizedContent);
+      final MockMultipartFile file =
+          new MockMultipartFile("file", "large.jpg", "image/jpeg", oversizedContent);
 
       assertThatThrownBy(() -> service.validateFile(file))
           .isInstanceOf(FileValidationException.class)
@@ -110,8 +110,8 @@ class FileValidationServiceImplTest {
       content[1] = (byte) 0xD8;
       content[2] = (byte) 0xFF;
 
-      final MockMultipartFile file = new MockMultipartFile(
-          "file", "exact.jpg", "image/jpeg", content);
+      final MockMultipartFile file =
+          new MockMultipartFile("file", "exact.jpg", "image/jpeg", content);
 
       assertThatCode(() -> service.validateFile(file)).doesNotThrowAnyException();
     }
@@ -123,8 +123,8 @@ class FileValidationServiceImplTest {
     @Test
     void shouldRejectFileWithUnrecognizedMagicBytes() {
       final byte[] randomBytes = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07};
-      final MockMultipartFile file = new MockMultipartFile(
-          "file", "unknown.bin", "application/octet-stream", randomBytes);
+      final MockMultipartFile file =
+          new MockMultipartFile("file", "unknown.bin", "application/octet-stream", randomBytes);
 
       assertThatThrownBy(() -> service.validateFile(file))
           .isInstanceOf(FileValidationException.class)
@@ -134,8 +134,8 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldRejectTextFileWithJpgExtension() {
-      final MockMultipartFile file = new MockMultipartFile(
-          "file", "fake.jpg", "image/jpeg", "Hello World".getBytes());
+      final MockMultipartFile file =
+          new MockMultipartFile("file", "fake.jpg", "image/jpeg", "Hello World".getBytes());
 
       assertThatThrownBy(() -> service.validateFile(file))
           .isInstanceOf(FileValidationException.class)
@@ -145,8 +145,9 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldRejectFileTooSmallForMagicBytesDetection() {
-      final MockMultipartFile file = new MockMultipartFile(
-          "file", "tiny.bin", "application/octet-stream", new byte[]{0x01, 0x02});
+      final MockMultipartFile file =
+          new MockMultipartFile(
+              "file", "tiny.bin", "application/octet-stream", new byte[] {0x01, 0x02});
 
       assertThatThrownBy(() -> service.validateFile(file))
           .isInstanceOf(FileValidationException.class)
@@ -156,13 +157,13 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldThrowFileUnreadableWhenInputStreamFails() {
-      final MultipartFile brokenFile = new MockMultipartFile(
-          "file", "test.jpg", "image/jpeg", new byte[]{1, 2, 3}) {
-        @Override
-        public InputStream getInputStream() throws IOException {
-          throw new IOException("Simulated read failure");
-        }
-      };
+      final MultipartFile brokenFile =
+          new MockMultipartFile("file", "test.jpg", "image/jpeg", new byte[] {1, 2, 3}) {
+            @Override
+            public InputStream getInputStream() throws IOException {
+              throw new IOException("Simulated read failure");
+            }
+          };
 
       assertThatThrownBy(() -> service.validateFile(brokenFile))
           .isInstanceOf(FileValidationException.class)
@@ -210,8 +211,7 @@ class FileValidationServiceImplTest {
 
     @Test
     void shouldPreserveValidFilename() {
-      assertThat(service.sanitizeFilename("receipt_2024.jpg"))
-          .isEqualTo("receipt_2024.jpg");
+      assertThat(service.sanitizeFilename("receipt_2024.jpg")).isEqualTo("receipt_2024.jpg");
     }
 
     @Test

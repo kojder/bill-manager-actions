@@ -13,18 +13,17 @@ class BillAnalysisResultTest {
 
   @Test
   void shouldSerializeToJson() throws Exception {
-    BillAnalysisResult result = new BillAnalysisResult(
-        "Grocery Store",
-        List.of(
-            new LineItem("Milk", new BigDecimal("2"), new BigDecimal("3.49"),
-                new BigDecimal("6.98")),
-            new LineItem("Bread", new BigDecimal("1"), new BigDecimal("4.99"),
-                new BigDecimal("4.99"))
-        ),
-        new BigDecimal("11.97"),
-        "PLN",
-        List.of("grocery", "dairy", "bakery")
-    );
+    BillAnalysisResult result =
+        new BillAnalysisResult(
+            "Grocery Store",
+            List.of(
+                new LineItem(
+                    "Milk", new BigDecimal("2"), new BigDecimal("3.49"), new BigDecimal("6.98")),
+                new LineItem(
+                    "Bread", new BigDecimal("1"), new BigDecimal("4.99"), new BigDecimal("4.99"))),
+            new BigDecimal("11.97"),
+            "PLN",
+            List.of("grocery", "dairy", "bakery"));
 
     String json = objectMapper.writeValueAsString(result);
 
@@ -37,7 +36,8 @@ class BillAnalysisResultTest {
 
   @Test
   void shouldDeserializeFromJson() throws Exception {
-    String json = """
+    String json =
+        """
         {
           "merchantName": "Grocery Store",
           "items": [
@@ -66,7 +66,8 @@ class BillAnalysisResultTest {
 
   @Test
   void shouldDeserializeWithNullCategoryTags() throws Exception {
-    String json = """
+    String json =
+        """
         {
           "merchantName": "Shop",
           "items": [
@@ -85,7 +86,8 @@ class BillAnalysisResultTest {
 
   @Test
   void shouldDeserializeWithEmptyCategoryTags() throws Exception {
-    String json = """
+    String json =
+        """
         {
           "merchantName": "Shop",
           "items": [

@@ -10,6 +10,7 @@
 - [Local Setup](#local-setup)
 - [Running the Application](#running-the-application)
 - [Development Workflow](#development-workflow)
+- [Running Spotless Locally](#running-spotless-locally)
 - [Running Checkstyle Locally](#running-checkstyle-locally)
 - [Running Tests Locally](#running-tests-locally)
 - [How to Download Review Artifacts](#how-to-download-review-artifacts)
@@ -45,6 +46,9 @@ cp .env.example .env
 
 # Verify the build
 ./mvnw clean compile
+
+# Auto-fix formatting
+./mvnw spotless:apply
 
 # Run checkstyle
 ./mvnw checkstyle:check
@@ -93,6 +97,9 @@ The regex `task-([0-9]+)` extracts the task number from the branch name. See [PR
 
 ```bash
 # Write code...
+
+# Auto-fix formatting
+./mvnw spotless:apply
 
 # Run checkstyle (MUST pass before commit)
 ./mvnw checkstyle:check
@@ -149,6 +156,24 @@ git push
 ```
 
 To trigger a **full re-run** (including enrichment): add the `rerun` label to the PR.
+
+---
+
+## Running Spotless Locally
+
+Spotless enforces Google Java Format (GOOGLE style, 2-space indent) across all Java files.
+
+```bash
+# Check formatting (same as CI)
+./mvnw spotless:check
+
+# Auto-fix all formatting issues
+./mvnw spotless:apply
+```
+
+Run `spotless:apply` before committing to avoid CI failures. The `.editorconfig` file provides IDE-agnostic defaults (2-space indent for Java), reducing formatting drift from IDE reformatting.
+
+Use `// spotless:off` and `// spotless:on` comments to exclude code blocks where google-java-format produces lines exceeding 120 characters (e.g., Records with multiple validation annotations).
 
 ---
 
@@ -222,6 +247,7 @@ See [Pattern Police](08-Pattern-Police) for details on what it checks.
 
 | Convention | Rule |
 |-----------|------|
+| **Formatting** | Google Java Format via Spotless (`./mvnw spotless:apply`) |
 | **DTOs** | Java Records, not classes |
 | **`final`** | On all parameters, fields, catch variables (except interface method params) |
 | **Interfaces** | Services define interfaces, controllers depend on abstractions |
@@ -242,6 +268,6 @@ See [Pattern Police](08-Pattern-Police) for details on what it checks.
 
 ---
 
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-20*
 
 *Sources: `CLAUDE.md` (Code Conventions, Build Commands, Git Commit Guidelines), `ai/tasks.md` (Rules section)*

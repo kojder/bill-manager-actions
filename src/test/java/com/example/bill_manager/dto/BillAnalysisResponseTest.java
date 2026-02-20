@@ -35,7 +35,8 @@ class BillAnalysisResponseTest {
 
   @Test
   void shouldDeserializeFromJson() throws Exception {
-    String json = """
+    String json =
+        """
         {
           "id": "550e8400-e29b-41d4-a716-446655440000",
           "originalFileName": "receipt.jpg",
@@ -52,17 +53,14 @@ class BillAnalysisResponseTest {
         }
         """;
 
-    BillAnalysisResponse response = objectMapper.readValue(json,
-        BillAnalysisResponse.class);
+    BillAnalysisResponse response = objectMapper.readValue(json, BillAnalysisResponse.class);
 
-    assertThat(response.id())
-        .isEqualTo(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
+    assertThat(response.id()).isEqualTo(UUID.fromString("550e8400-e29b-41d4-a716-446655440000"));
     assertThat(response.originalFileName()).isEqualTo("receipt.jpg");
     assertThat(response.analysis()).isNotNull();
     assertThat(response.analysis().merchantName()).isEqualTo("Test Store");
     assertThat(response.analysis().items()).hasSize(1);
-    assertThat(response.analyzedAt()).isEqualTo(
-        Instant.parse("2026-02-06T14:30:00Z"));
+    assertThat(response.analyzedAt()).isEqualTo(Instant.parse("2026-02-06T14:30:00Z"));
   }
 
   @Test
@@ -70,8 +68,7 @@ class BillAnalysisResponseTest {
     BillAnalysisResponse original = createSampleResponse();
 
     String json = objectMapper.writeValueAsString(original);
-    BillAnalysisResponse deserialized = objectMapper.readValue(json,
-        BillAnalysisResponse.class);
+    BillAnalysisResponse deserialized = objectMapper.readValue(json, BillAnalysisResponse.class);
 
     assertThat(deserialized.id()).isEqualTo(original.id());
     assertThat(deserialized.originalFileName()).isEqualTo(original.originalFileName());
@@ -88,13 +85,12 @@ class BillAnalysisResponseTest {
         "receipt.jpg",
         new BillAnalysisResult(
             "Test Store",
-            List.of(new LineItem("Item A", new BigDecimal("1"),
-                new BigDecimal("9.99"), new BigDecimal("9.99"))),
+            List.of(
+                new LineItem(
+                    "Item A", new BigDecimal("1"), new BigDecimal("9.99"), new BigDecimal("9.99"))),
             new BigDecimal("9.99"),
             "PLN",
-            List.of("test")
-        ),
-        Instant.parse("2026-02-06T14:30:00Z")
-    );
+            List.of("test")),
+        Instant.parse("2026-02-06T14:30:00Z"));
   }
 }

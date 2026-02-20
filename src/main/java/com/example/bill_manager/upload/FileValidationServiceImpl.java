@@ -11,9 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class FileValidationServiceImpl implements FileValidationService {
 
   private static final byte[] JPEG_MAGIC = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF};
-  private static final byte[] PNG_MAGIC = {
-      (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A
-  };
+  private static final byte[] PNG_MAGIC = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
   private static final byte[] PDF_MAGIC = {0x25, 0x50, 0x44, 0x46};
   private static final int MAX_MAGIC_BYTES_LENGTH = 8;
   private static final int MAX_FILENAME_LENGTH = 255;
@@ -45,10 +43,12 @@ public class FileValidationServiceImpl implements FileValidationService {
       sanitized = sanitized.replace("..", "");
     }
 
-    sanitized = sanitized.codePoints()
-        .filter(cp -> cp >= 32)
-        .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
-        .toString();
+    sanitized =
+        sanitized
+            .codePoints()
+            .filter(cp -> cp >= 32)
+            .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+            .toString();
 
     sanitized = sanitized.strip();
     while (sanitized.startsWith(".")) {
@@ -75,14 +75,14 @@ public class FileValidationServiceImpl implements FileValidationService {
       throw new FileValidationException(
           FileValidationException.ErrorCode.FILE_TOO_LARGE,
           "File size exceeds maximum allowed size of "
-              + uploadProperties.maxFileSizeBytes() + " bytes");
+              + uploadProperties.maxFileSizeBytes()
+              + " bytes");
     }
   }
 
   private void validateMimeType(final MultipartFile file) {
     final String detectedMimeType = detectMimeTypeFromContent(file);
-    if (detectedMimeType == null
-        || !uploadProperties.isMimeTypeAllowed(detectedMimeType)) {
+    if (detectedMimeType == null || !uploadProperties.isMimeTypeAllowed(detectedMimeType)) {
       throw new FileValidationException(
           FileValidationException.ErrorCode.UNSUPPORTED_MEDIA_TYPE,
           "File type not supported. Allowed: "
@@ -111,12 +111,12 @@ public class FileValidationServiceImpl implements FileValidationService {
     } catch (final IOException e) {
       throw new FileValidationException(
           FileValidationException.ErrorCode.FILE_UNREADABLE,
-          "Failed to read file content for MIME type detection", e);
+          "Failed to read file content for MIME type detection",
+          e);
     }
   }
 
-  private boolean startsWith(final byte[] data, final int dataLength,
-      final byte[] prefix) {
+  private boolean startsWith(final byte[] data, final int dataLength, final byte[] prefix) {
     if (dataLength < prefix.length) {
       return false;
     }

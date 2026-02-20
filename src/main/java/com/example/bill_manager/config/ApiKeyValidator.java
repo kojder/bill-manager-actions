@@ -30,9 +30,10 @@ public class ApiKeyValidator {
     }
 
     // Check for common placeholder patterns without exposing actual key value
-    boolean isPlaceholder = apiKey.contains("your_groq_api_key")
-        || apiKey.contains("${")
-        || apiKey.contains("REPLACE_WITH");
+    boolean isPlaceholder =
+        apiKey.contains("your_groq_api_key")
+            || apiKey.contains("${")
+            || apiKey.contains("REPLACE_WITH");
 
     if (isPlaceholder) {
       throw new IllegalStateException(

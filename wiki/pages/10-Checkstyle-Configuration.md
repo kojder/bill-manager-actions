@@ -212,20 +212,35 @@ The Checkstyle Maven plugin is configured in `pom.xml`:
 
 ---
 
+## Relationship with Spotless
+
+The project uses both Spotless (`google-java-format`) and Checkstyle:
+
+| Tool | What It Handles | Auto-fixable? |
+|------|----------------|---------------|
+| **Spotless** | Indentation, line wrapping, import ordering, whitespace formatting | Yes (`./mvnw spotless:apply`) |
+| **Checkstyle** | Code rules requiring manual fixes (`FinalParameters`, naming conventions, `EqualsHashCode`, etc.) | No |
+
+Both run in CI within the same job: Spotless first, then Checkstyle. They are complementary, not competing — Spotless handles the auto-fixable formatting concerns, while Checkstyle enforces structural code rules.
+
+**Developer workflow:** Run `./mvnw spotless:apply` before committing to auto-fix formatting, then verify with `./mvnw checkstyle:check`.
+
+---
+
 ## Why Claude Skips Formatting Issues
 
 The CI pipeline explicitly tells Claude to skip formatting:
 
 ```
-DO NOT comment on formatting issues (handled by Checkstyle CI job).
+DO NOT comment on formatting issues (handled by Spotless + Checkstyle CI job).
 ```
 
 **Rationale:**
 
-1. **Deterministic vs. semantic:** Checkstyle produces deterministic pass/fail results for style rules. Claude adds value where automated tools fall short — understanding code logic and intent.
+1. **Deterministic vs. semantic:** Spotless and Checkstyle produce deterministic pass/fail results for style rules. Claude adds value where automated tools fall short — understanding code logic and intent.
 2. **Efficiency:** Claude's review cycles are expensive. Spending them on "add a space before `{`" wastes capacity that should go to "this null check is missing" or "this API key could be exposed."
-3. **No duplication:** If Checkstyle already catches a formatting issue, Claude mentioning it again adds noise, not value.
-4. **Pipeline ordering:** By running Checkstyle *before* Claude review, the pipeline ensures Claude only sees code that already meets style standards.
+3. **No duplication:** If Spotless/Checkstyle already catches a formatting issue, Claude mentioning it again adds noise, not value.
+4. **Pipeline ordering:** By running Spotless and Checkstyle *before* Claude review, the pipeline ensures Claude only sees code that already meets style standards.
 
 ---
 
@@ -236,6 +251,6 @@ DO NOT comment on formatting issues (handled by Checkstyle CI job).
 
 ---
 
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-20*
 
-*Sources: `checkstyle.xml`, `pom.xml` (maven-checkstyle-plugin), `CLAUDE.md` (Code Conventions — Use of `final`)*
+*Sources: `checkstyle.xml`, `pom.xml` (maven-checkstyle-plugin, spotless-maven-plugin), `CLAUDE.md` (Code Conventions — Use of `final`, Auto-formatting with Spotless)*

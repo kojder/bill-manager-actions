@@ -6,19 +6,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
-import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 @SpringJUnitConfig(initializers = ConfigDataApplicationContextInitializer.class)
 @EnableConfigurationProperties(UploadProperties.class)
-@TestPropertySource(properties = {
-    "upload.max-file-size-bytes=5242880",
-    "upload.allowed-mime-types=image/jpeg,image/png"
-})
+@TestPropertySource(
+    properties = {
+      "upload.max-file-size-bytes=5242880",
+      "upload.allowed-mime-types=image/jpeg,image/png"
+    })
 class UploadPropertiesTest {
 
-  @Autowired
-  private UploadProperties properties;
+  @Autowired private UploadProperties properties;
 
   @Test
   void shouldLoadUploadProperties() {
