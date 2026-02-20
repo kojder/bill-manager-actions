@@ -106,7 +106,12 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
     if (MIME_TYPE_JPEG.equals(mimeType)) {
       return writeJpeg(image);
     }
-    return writePng(image);
+    if (MIME_TYPE_PNG.equals(mimeType)) {
+      return writePng(image);
+    }
+    throw new ImagePreprocessingException(
+        ImagePreprocessingException.ErrorCode.PREPROCESSING_FAILED,
+        "Unsupported MIME type for image write: " + mimeType);
   }
 
   private byte[] writeJpeg(final BufferedImage image) {
@@ -139,7 +144,12 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
 
   private byte[] writePng(final BufferedImage image) {
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-      ImageIO.write(image, "png", outputStream);
+      final boolean written = ImageIO.write(image, "png", outputStream);
+      if (!written) {
+        throw new ImagePreprocessingException(
+            ImagePreprocessingException.ErrorCode.PREPROCESSING_FAILED,
+            "No PNG ImageWriter available in this JRE");
+      }
       return outputStream.toByteArray();
     } catch (final IOException e) {
       throw new ImagePreprocessingException(

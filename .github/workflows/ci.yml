@@ -235,7 +235,7 @@ jobs:
             Rules:
             - Do NOT modify any source files. Only write the report file under reports/.
           claude_args: |
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Write,Bash(mkdir -p reports)"
+            --allowedTools "Read,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Write,Bash(mkdir -p reports)"
 
       - name: Upload review report
         if: ${{ hashFiles('reports/**') != '' }}
