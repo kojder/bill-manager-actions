@@ -2,6 +2,7 @@ package com.example.bill_manager.exception;
 
 import com.example.bill_manager.dto.ErrorResponse;
 import com.example.bill_manager.upload.FileValidationException;
+import com.example.bill_manager.upload.ImagePreprocessingException;
 import java.time.Instant;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -61,6 +62,15 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(response);
   }
 
+  @ExceptionHandler(ImagePreprocessingException.class)
+  public ResponseEntity<ErrorResponse> handleImagePreprocessing(
+      final ImagePreprocessingException ex) {
+    final HttpStatus status = mapPreprocessingErrorCodeToStatus(ex.getErrorCode());
+    final ErrorResponse response = new ErrorResponse(
+        ex.getErrorCode().name(), ex.getMessage(), Instant.now());
+    return ResponseEntity.status(status).body(response);
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponse> handleGenericException(
       final Exception ex) {
@@ -79,6 +89,14 @@ public class GlobalExceptionHandler {
       case FILE_TOO_LARGE -> HttpStatus.PAYLOAD_TOO_LARGE;
       case UNSUPPORTED_MEDIA_TYPE -> HttpStatus.UNSUPPORTED_MEDIA_TYPE;
       case FILE_UNREADABLE -> HttpStatus.INTERNAL_SERVER_ERROR;
+    };
+  }
+
+  private HttpStatus mapPreprocessingErrorCodeToStatus(
+      final ImagePreprocessingException.ErrorCode errorCode) {
+    return switch (errorCode) {
+      case IMAGE_READ_FAILED -> HttpStatus.UNPROCESSABLE_ENTITY;
+      case PREPROCESSING_FAILED -> HttpStatus.INTERNAL_SERVER_ERROR;
     };
   }
 }

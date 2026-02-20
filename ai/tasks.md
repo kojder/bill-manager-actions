@@ -205,22 +205,35 @@
 
 ---
 
-### Task 8: Image Preprocessing
+### Task 8: Image Preprocessing ✅ COMPLETED
+
+**Status:** Merged to master (PR #8)
 
 **Description:** Service for preparing images before sending to LLM: resize to max 1200px width, strip EXIF metadata.
 
 **Scope:**
 - New: `src/main/java/.../upload/ImagePreprocessingService.java` (interface)
 - New: `src/main/java/.../upload/ImagePreprocessingServiceImpl.java` (implementation)
-- Tests: images of various sizes (smaller/larger than 1200px), with/without EXIF, dimension verification after resize
+- New: `src/main/java/.../upload/ImagePreprocessingException.java` (custom exception with ErrorCode enum)
+- Modified: `src/main/java/.../exception/GlobalExceptionHandler.java` — added `ImagePreprocessingException` handler
+- Tests: 14 tests — JPEG/PNG resize, aspect ratio, EXIF stripping, PDF passthrough, transparency, edge cases, error handling
 
 **Claude review:** **CLAUDE.md Upload Module review rules**
 
 **Expected review points:**
-- [ ] Resize to max 1200px preserving aspect ratio
-- [ ] EXIF metadata stripped
-- [ ] Multiple format support (JPEG, PNG)
-- [ ] PDF passthrough (PDFs are not preprocessed)
+- [x] Resize to max 1200px preserving aspect ratio
+- [x] EXIF metadata stripped
+- [x] Multiple format support (JPEG, PNG)
+- [x] PDF passthrough (PDFs are not preprocessed)
+
+**Implementation notes:**
+- Pure Java (`ImageIO` + `Graphics2D`) — no external image processing dependencies
+- EXIF stripping automatic via ImageIO re-encoding (metadata not carried over)
+- JPEG output with explicit quality control (`ImageWriteParam`, quality=0.9)
+- PNG preserves alpha channel (`TYPE_INT_ARGB`), JPEG uses `TYPE_INT_RGB`
+- `BICUBIC` interpolation + `QUALITY` rendering hints for resize
+- `ImagePreprocessingException` with `ErrorCode` enum: `IMAGE_READ_FAILED` (422), `PREPROCESSING_FAILED` (500)
+- Images at or below 1200px width are re-encoded (strips EXIF) without resize
 
 **Size:** M
 
