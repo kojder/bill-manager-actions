@@ -187,10 +187,8 @@ class ImagePreprocessingServiceImplTest {
     }
   }
 
-  private byte[] createTestJpeg(final int width, final int height)
-      throws IOException {
-    final BufferedImage image = new BufferedImage(
-        width, height, BufferedImage.TYPE_INT_RGB);
+  private byte[] createTestJpeg(final int width, final int height) throws IOException {
+    final BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
     final Graphics2D g = image.createGraphics();
     try {
       g.setColor(Color.BLUE);
@@ -203,10 +201,8 @@ class ImagePreprocessingServiceImplTest {
     return baos.toByteArray();
   }
 
-  private byte[] createTestPng(final int width, final int height)
-      throws IOException {
-    final BufferedImage image = new BufferedImage(
-        width, height, BufferedImage.TYPE_INT_ARGB);
+  private byte[] createTestPng(final int width, final int height) throws IOException {
+    final BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
     final Graphics2D g = image.createGraphics();
     try {
       g.setColor(new Color(255, 0, 0, 128));
@@ -223,24 +219,35 @@ class ImagePreprocessingServiceImplTest {
   // marker and the encoder's first marker. ImageIO tolerates this on standard
   // JREs (OpenJDK, Oracle). If this test becomes flaky on an exotic JRE,
   // replace with a pre-built JPEG fixture containing real EXIF data.
-  private byte[] createJpegWithExifMarker(final int width, final int height)
-      throws IOException {
+  private byte[] createJpegWithExifMarker(final int width, final int height) throws IOException {
     final byte[] jpeg = createTestJpeg(width, height);
     final byte[] exifSegment = buildMinimalExifSegment();
     final byte[] combined = new byte[2 + exifSegment.length + jpeg.length - 2];
     combined[0] = (byte) 0xFF;
     combined[1] = (byte) 0xD8;
     System.arraycopy(exifSegment, 0, combined, 2, exifSegment.length);
-    System.arraycopy(jpeg, 2, combined, 2 + exifSegment.length,
-        jpeg.length - 2);
+    System.arraycopy(jpeg, 2, combined, 2 + exifSegment.length, jpeg.length - 2);
     return combined;
   }
 
   private byte[] buildMinimalExifSegment() {
     final byte[] exifHeader = {
-        (byte) 0xFF, (byte) 0xE1, 0x00, 0x10,
-        0x45, 0x78, 0x69, 0x66, 0x00, 0x00,
-        0x4D, 0x4D, 0x00, 0x2A, 0x00, 0x00
+      (byte) 0xFF,
+      (byte) 0xE1,
+      0x00,
+      0x10,
+      0x45,
+      0x78,
+      0x69,
+      0x66,
+      0x00,
+      0x00,
+      0x4D,
+      0x4D,
+      0x00,
+      0x2A,
+      0x00,
+      0x00
     };
     return exifHeader;
   }
@@ -248,9 +255,7 @@ class ImagePreprocessingServiceImplTest {
   private boolean containsExifApp1Marker(final byte[] jpegData) {
     for (int i = 0; i < jpegData.length - 1; i++) {
       if (jpegData[i] == (byte) 0xFF && jpegData[i + 1] == (byte) 0xE1) {
-        if (i + 5 < jpegData.length
-            && jpegData[i + 4] == 0x45
-            && jpegData[i + 5] == 0x78) {
+        if (i + 5 < jpegData.length && jpegData[i + 4] == 0x45 && jpegData[i + 5] == 0x78) {
           return true;
         }
       }

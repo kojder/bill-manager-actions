@@ -12,14 +12,13 @@ public class ImagePreprocessingException extends RuntimeException {
 
   private final ErrorCode errorCode;
 
-  public ImagePreprocessingException(final ErrorCode errorCode,
-      final String message) {
+  public ImagePreprocessingException(final ErrorCode errorCode, final String message) {
     super(message);
     this.errorCode = errorCode;
   }
 
-  public ImagePreprocessingException(final ErrorCode errorCode,
-      final String message, final Throwable cause) {
+  public ImagePreprocessingException(
+      final ErrorCode errorCode, final String message, final Throwable cause) {
     super(message, cause);
     this.errorCode = errorCode;
   }

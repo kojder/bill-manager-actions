@@ -27,13 +27,11 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
   public byte[] preprocess(final byte[] fileContent, final String mimeType) {
     if (fileContent == null) {
       throw new ImagePreprocessingException(
-          ImagePreprocessingException.ErrorCode.IMAGE_READ_FAILED,
-          "File content must not be null");
+          ImagePreprocessingException.ErrorCode.IMAGE_READ_FAILED, "File content must not be null");
     }
     if (mimeType == null) {
       throw new ImagePreprocessingException(
-          ImagePreprocessingException.ErrorCode.IMAGE_READ_FAILED,
-          "MIME type must not be null");
+          ImagePreprocessingException.ErrorCode.IMAGE_READ_FAILED, "MIME type must not be null");
     }
 
     if (MIME_TYPE_PDF.equals(mimeType)) {
@@ -42,9 +40,10 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
 
     final BufferedImage originalImage = readImage(fileContent);
     final int imageType = resolveImageType(mimeType);
-    final BufferedImage processedImage = originalImage.getWidth() > MAX_WIDTH_PX
-        ? resizeImage(originalImage, MAX_WIDTH_PX, imageType)
-        : ensureImageType(originalImage, imageType);
+    final BufferedImage processedImage =
+        originalImage.getWidth() > MAX_WIDTH_PX
+            ? resizeImage(originalImage, MAX_WIDTH_PX, imageType)
+            : ensureImageType(originalImage, imageType);
 
     return writeImage(processedImage, mimeType);
   }
@@ -61,24 +60,21 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
     } catch (final IOException e) {
       throw new ImagePreprocessingException(
           ImagePreprocessingException.ErrorCode.IMAGE_READ_FAILED,
-          "Failed to read image content", e);
+          "Failed to read image content",
+          e);
     }
   }
 
-  private BufferedImage resizeImage(final BufferedImage original,
-      final int targetWidth, final int imageType) {
-    final int targetHeight = (int) Math.round(
-        (double) original.getHeight() / original.getWidth() * targetWidth);
-    final BufferedImage resized = new BufferedImage(
-        targetWidth, targetHeight, imageType);
+  private BufferedImage resizeImage(
+      final BufferedImage original, final int targetWidth, final int imageType) {
+    final int targetHeight =
+        (int) Math.round((double) original.getHeight() / original.getWidth() * targetWidth);
+    final BufferedImage resized = new BufferedImage(targetWidth, targetHeight, imageType);
     final Graphics2D graphics = resized.createGraphics();
     try {
       graphics.setRenderingHint(
-          RenderingHints.KEY_INTERPOLATION,
-          RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-      graphics.setRenderingHint(
-          RenderingHints.KEY_RENDERING,
-          RenderingHints.VALUE_RENDER_QUALITY);
+          RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+      graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
       graphics.drawImage(original, 0, 0, targetWidth, targetHeight, null);
     } finally {
       graphics.dispose();
@@ -86,13 +82,12 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
     return resized;
   }
 
-  private BufferedImage ensureImageType(final BufferedImage original,
-      final int imageType) {
+  private BufferedImage ensureImageType(final BufferedImage original, final int imageType) {
     if (original.getType() == imageType) {
       return original;
     }
-    final BufferedImage converted = new BufferedImage(
-        original.getWidth(), original.getHeight(), imageType);
+    final BufferedImage converted =
+        new BufferedImage(original.getWidth(), original.getHeight(), imageType);
     final Graphics2D graphics = converted.createGraphics();
     try {
       graphics.drawImage(original, 0, 0, null);
@@ -116,16 +111,14 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
 
   private byte[] writeJpeg(final BufferedImage image) {
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-      final Iterator<ImageWriter> writers =
-          ImageIO.getImageWritersByFormatName("jpg");
+      final Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
       if (!writers.hasNext()) {
         throw new ImagePreprocessingException(
             ImagePreprocessingException.ErrorCode.PREPROCESSING_FAILED,
             "No JPEG ImageWriter available in this JRE");
       }
       final ImageWriter writer = writers.next();
-      try (ImageOutputStream imageOutputStream =
-               ImageIO.createImageOutputStream(outputStream)) {
+      try (ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(outputStream)) {
         final ImageWriteParam params = writer.getDefaultWriteParam();
         params.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
         params.setCompressionQuality(JPEG_QUALITY);
@@ -138,7 +131,8 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
     } catch (final IOException e) {
       throw new ImagePreprocessingException(
           ImagePreprocessingException.ErrorCode.PREPROCESSING_FAILED,
-          "Failed to write preprocessed JPEG image", e);
+          "Failed to write preprocessed JPEG image",
+          e);
     }
   }
 
@@ -154,7 +148,8 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
     } catch (final IOException e) {
       throw new ImagePreprocessingException(
           ImagePreprocessingException.ErrorCode.PREPROCESSING_FAILED,
-          "Failed to write preprocessed PNG image", e);
+          "Failed to write preprocessed PNG image",
+          e);
     }
   }
 

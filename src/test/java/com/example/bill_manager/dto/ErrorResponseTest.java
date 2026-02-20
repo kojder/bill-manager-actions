@@ -20,11 +20,11 @@ class ErrorResponseTest {
 
   @Test
   void shouldSerializeToJson() throws Exception {
-    ErrorResponse error = new ErrorResponse(
-        "UNSUPPORTED_MEDIA_TYPE",
-        "File type not supported. Allowed: JPEG, PNG, PDF",
-        Instant.parse("2026-02-06T14:30:00Z")
-    );
+    ErrorResponse error =
+        new ErrorResponse(
+            "UNSUPPORTED_MEDIA_TYPE",
+            "File type not supported. Allowed: JPEG, PNG, PDF",
+            Instant.parse("2026-02-06T14:30:00Z"));
 
     String json = objectMapper.writeValueAsString(error);
 
@@ -35,7 +35,8 @@ class ErrorResponseTest {
 
   @Test
   void shouldDeserializeFromJson() throws Exception {
-    String json = """
+    String json =
+        """
         {
           "code": "FILE_TOO_LARGE",
           "message": "Exceeded 10MB limit",
@@ -47,17 +48,16 @@ class ErrorResponseTest {
 
     assertThat(error.code()).isEqualTo("FILE_TOO_LARGE");
     assertThat(error.message()).isEqualTo("Exceeded 10MB limit");
-    assertThat(error.timestamp()).isEqualTo(
-        Instant.parse("2026-02-06T14:30:00Z"));
+    assertThat(error.timestamp()).isEqualTo(Instant.parse("2026-02-06T14:30:00Z"));
   }
 
   @Test
   void shouldRoundTripSerializeDeserialize() throws Exception {
-    ErrorResponse original = new ErrorResponse(
-        "ANALYSIS_NOT_FOUND",
-        "Analysis with given ID not found",
-        Instant.parse("2026-02-06T15:00:00Z")
-    );
+    ErrorResponse original =
+        new ErrorResponse(
+            "ANALYSIS_NOT_FOUND",
+            "Analysis with given ID not found",
+            Instant.parse("2026-02-06T15:00:00Z"));
 
     String json = objectMapper.writeValueAsString(original);
     ErrorResponse deserialized = objectMapper.readValue(json, ErrorResponse.class);

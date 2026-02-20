@@ -12,12 +12,9 @@ class LineItemTest {
 
   @Test
   void shouldSerializeToJson() throws Exception {
-    LineItem item = new LineItem(
-        "Milk 3.2%",
-        new BigDecimal("2"),
-        new BigDecimal("3.49"),
-        new BigDecimal("6.98")
-    );
+    LineItem item =
+        new LineItem(
+            "Milk 3.2%", new BigDecimal("2"), new BigDecimal("3.49"), new BigDecimal("6.98"));
 
     String json = objectMapper.writeValueAsString(item);
 
@@ -29,7 +26,8 @@ class LineItemTest {
 
   @Test
   void shouldDeserializeFromJson() throws Exception {
-    String json = """
+    String json =
+        """
         {
           "name": "Wheat Bread",
           "quantity": 1,
@@ -48,7 +46,8 @@ class LineItemTest {
 
   @Test
   void shouldHandleDecimalPrecision() throws Exception {
-    String json = """
+    String json =
+        """
         {
           "name": "Item",
           "quantity": 0.5,

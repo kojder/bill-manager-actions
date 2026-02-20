@@ -9,14 +9,14 @@ import org.springframework.validation.annotation.Validated;
 
 @ConfigurationProperties(prefix = "upload")
 @Validated
+// spotless:off
 public record UploadProperties(
     @NotNull(message = "Max file size must not be null")
     @Min(value = 1, message = "Max file size must be at least 1 byte")
     Long maxFileSizeBytes,
-
     @NotEmpty(message = "Allowed MIME types must not be empty")
-    List<String> allowedMimeTypes
-) {
+    List<String> allowedMimeTypes) {
+  // spotless:on
   public boolean isFileSizeValid(final long fileSizeBytes) {
     return fileSizeBytes > 0 && fileSizeBytes <= maxFileSizeBytes;
   }

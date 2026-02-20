@@ -9,19 +9,8 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public record BillAnalysisResult(
-    @NotBlank
-    String merchantName,
-
-    @NotEmpty
-    @Valid
-    List<LineItem> items,
-
-    @NotNull
-    @PositiveOrZero
-    BigDecimal totalAmount,
-
-    @NotBlank
-    String currency,
-
-    List<String> categoryTags
-) {}
+    @NotBlank String merchantName,
+    @NotEmpty @Valid List<LineItem> items,
+    @NotNull @PositiveOrZero BigDecimal totalAmount,
+    @NotBlank String currency,
+    List<String> categoryTags) {}

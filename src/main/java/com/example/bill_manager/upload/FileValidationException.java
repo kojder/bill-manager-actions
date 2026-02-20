@@ -19,8 +19,8 @@ public class FileValidationException extends RuntimeException {
     this.errorCode = errorCode;
   }
 
-  public FileValidationException(final ErrorCode errorCode, final String message,
-      final Throwable cause) {
+  public FileValidationException(
+      final ErrorCode errorCode, final String message, final Throwable cause) {
     super(message, cause);
     this.errorCode = errorCode;
   }
