@@ -35,7 +35,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Documentation
 
-Detailed project documentation is maintained in the `./ai/` directory:
+### GitHub Wiki
+
+The project has a comprehensive **[GitHub Wiki](https://github.com/kojder/bill-manager-actions/wiki)** documenting CI automation, Claude Code Review workflows, security model, and application architecture. Wiki source files are maintained in `./wiki/pages/` (12 pages with Mermaid diagrams).
+
+### AI Documentation (`./ai/`)
 
 - `./ai/prd.md` - Product requirements, user stories, MVP scope
 - `./ai/tech-stack.md` - Technology stack, architecture, module structure
@@ -97,6 +101,30 @@ Then:
 2. **Do NOT apply the update** until user confirms
 3. **Ask clarifying questions** when needed
 4. **After the rules update**, retry the original task from before the mistake
+
+### Wiki Synchronization Rule
+
+The project maintains a **GitHub Wiki** (`./wiki/pages/`) that documents CI pipelines, workflows, review rules, security model, and application architecture. The wiki must stay in sync with the actual project state.
+
+**When making changes that affect wiki-documented content, always verify and update the relevant wiki pages.** Areas that require wiki verification:
+
+| Change Type | Wiki Pages to Check |
+|-------------|---------------------|
+| Workflow YAML changes (`.github/workflows/`) | 02-Pipeline-Overview, 03-CI-Pipeline-Deep-Dive, 05-Claude-Code-Review-Job, 07-Interactive-Claude-Assistant, 08-Pattern-Police, 09-Security-and-Permissions |
+| CLAUDE.md review rules | 04-CLAUDE-MD-as-Review-Brain, 09-Security-and-Permissions |
+| `--allowedTools` changes | 09-Security-and-Permissions |
+| PR template changes | 06-PR-Enrichment-and-Task-Workflow |
+| Checkstyle config changes | 10-Checkstyle-Configuration |
+| Package structure / new modules | 11-Application-Architecture |
+| Build commands / setup changes | 12-Contributing-Guide |
+| REST API endpoints | 11-Application-Architecture, 12-Contributing-Guide |
+| New workflow or pipeline job | 01-Home, 02-Pipeline-Overview |
+
+**Workflow:**
+1. After implementing the change, check the table above for affected wiki pages
+2. Read the relevant wiki page(s) in `./wiki/pages/`
+3. Update any outdated content, diagrams, or examples
+4. If the wiki update is non-trivial, include it in the same commit or as a follow-up commit
 
 ### Plan-First Approach
 

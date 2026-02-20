@@ -146,6 +146,22 @@ Path-specific review rules are defined in `CLAUDE.md` under "Path-Specific Revie
 
 ## 7. Documentation
 
+### GitHub Wiki
+
+Comprehensive project documentation is available on the **[GitHub Wiki](https://github.com/kojder/bill-manager-actions/wiki)** — the best starting point for understanding how CI automation and Claude Code Review work in this project. The wiki covers:
+
+- CI Pipeline deep dive (5-job chain, `always()` pattern, rerun lifecycle)
+- CLAUDE.md as the review brain (path-specific rules, DO/DON'T split)
+- Claude Code Review job anatomy (prompt, structured reports, artifacts)
+- PR enrichment and task workflow
+- Interactive Claude assistant and Pattern Police workflows
+- Security, permissions, and `--allowedTools` whitelists
+- Checkstyle configuration and application architecture
+
+Wiki source files are maintained in the `./wiki/` directory.
+
+### Project Documentation (ai/)
+
 - `./ai/prd.md` — Product requirements, user stories, MVP scope
 - `./ai/tech-stack.md` — Technology stack, architecture, module structure
 - `./ai/api-plan.md` — REST API plan, data models, error codes
