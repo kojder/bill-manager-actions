@@ -6,6 +6,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Iterator;
 import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
@@ -16,7 +17,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class ImagePreprocessingServiceImpl implements ImagePreprocessingService {
 
-  static final int MAX_WIDTH_PX = 1200;
+  private static final int MAX_WIDTH_PX = 1200;
   private static final float JPEG_QUALITY = 0.9f;
   private static final String MIME_TYPE_PDF = "application/pdf";
   private static final String MIME_TYPE_JPEG = "image/jpeg";
@@ -28,6 +29,11 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
       throw new ImagePreprocessingException(
           ImagePreprocessingException.ErrorCode.IMAGE_READ_FAILED,
           "File content must not be null");
+    }
+    if (mimeType == null) {
+      throw new ImagePreprocessingException(
+          ImagePreprocessingException.ErrorCode.IMAGE_READ_FAILED,
+          "MIME type must not be null");
     }
 
     if (MIME_TYPE_PDF.equals(mimeType)) {
@@ -105,8 +111,14 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
 
   private byte[] writeJpeg(final BufferedImage image) {
     try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-      final ImageWriter writer =
-          ImageIO.getImageWritersByFormatName("jpg").next();
+      final Iterator<ImageWriter> writers =
+          ImageIO.getImageWritersByFormatName("jpg");
+      if (!writers.hasNext()) {
+        throw new ImagePreprocessingException(
+            ImagePreprocessingException.ErrorCode.PREPROCESSING_FAILED,
+            "No JPEG ImageWriter available in this JRE");
+      }
+      final ImageWriter writer = writers.next();
       try (ImageOutputStream imageOutputStream =
                ImageIO.createImageOutputStream(outputStream)) {
         final ImageWriteParam params = writer.getDefaultWriteParam();

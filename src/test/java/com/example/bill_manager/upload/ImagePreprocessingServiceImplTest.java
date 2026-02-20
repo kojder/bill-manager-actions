@@ -175,6 +175,16 @@ class ImagePreprocessingServiceImplTest {
           .extracting(e -> ((ImagePreprocessingException) e).getErrorCode())
           .isEqualTo(ImagePreprocessingException.ErrorCode.IMAGE_READ_FAILED);
     }
+
+    @Test
+    void shouldThrowExceptionForNullMimeType() throws IOException {
+      final byte[] input = createTestJpeg(100, 100);
+
+      assertThatThrownBy(() -> service.preprocess(input, null))
+          .isInstanceOf(ImagePreprocessingException.class)
+          .extracting(e -> ((ImagePreprocessingException) e).getErrorCode())
+          .isEqualTo(ImagePreprocessingException.ErrorCode.IMAGE_READ_FAILED);
+    }
   }
 
   private byte[] createTestJpeg(final int width, final int height)
@@ -209,6 +219,10 @@ class ImagePreprocessingServiceImplTest {
     return baos.toByteArray();
   }
 
+  // Synthetic EXIF: splices a minimal APP1 (0xFFE1) segment between the SOI
+  // marker and the encoder's first marker. ImageIO tolerates this on standard
+  // JREs (OpenJDK, Oracle). If this test becomes flaky on an exotic JRE,
+  // replace with a pre-built JPEG fixture containing real EXIF data.
   private byte[] createJpegWithExifMarker(final int width, final int height)
       throws IOException {
     final byte[] jpeg = createTestJpeg(width, height);
