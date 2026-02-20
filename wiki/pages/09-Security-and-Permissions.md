@@ -35,7 +35,9 @@ Each workflow explicitly declares which tools Claude can use via `--allowedTools
 
 | Tool | CI Review | Interactive | Pattern Police |
 |------|:---------:|:-----------:|:--------------:|
-| `Read` | — | Yes | — |
+| `Glob` | Yes | Yes | — |
+| `Grep` | Yes | Yes | — |
+| `Read` | Yes (limited) | Yes | — |
 | `Write` | Yes | Yes | Yes |
 | `Edit` | — | Yes | — |
 | `Bash(gh pr view:*)` | Yes | Yes | Yes |
@@ -54,7 +56,7 @@ Each workflow explicitly declares which tools Claude can use via `--allowedTools
 
 **Key observations:**
 
-- **CI Review** has no `Read` or `Edit` — it cannot read arbitrary files or modify source code. It can only write to the `reports/` directory and post comments.
+- **CI Review** has `Glob`, `Grep`, and `Read` for contextual code analysis (interfaces, callers, test counterparts) but no `Edit` — it cannot modify source code. Read access is governed by the prompt's token budget rules (max 5 files beyond the diff). It can write only to the `reports/` directory and post comments.
 - **Interactive Claude** has the broadest tool set — it can read, write, edit files, run tests, and interact with Git history. This is appropriate because it's developer-initiated.
 - **Pattern Police** is the most restricted — it can only read the PR diff, view PR metadata, and write a report. No commenting, no file reading, no builds.
 

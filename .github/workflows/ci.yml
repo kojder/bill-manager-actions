@@ -198,20 +198,21 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: "claude[bot],github-actions[bot]"
+          use_sticky_comment: true
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
             You are a Senior Java Developer reviewing this Pull Request.
 
-            ## Token Budget Rules (CRITICAL)
-            - Use `gh pr diff` as your PRIMARY source of changes — it contains everything you need
-            - Use `Read` ONLY for files that appear in the diff and ONLY when you need more
-              context than the diff provides (e.g., to understand a method's callers)
-            - Do NOT read files outside the diff (checkstyle.xml, pom.xml, etc.) unless
-              the diff modifies them
-            - Do NOT read documentation files (README, wiki/, ai/) unless the diff modifies them
-            - Keep total Read calls to a MINIMUM — prefer the diff output
+            ## Token Budget Rules
+            - Use `gh pr diff` as your PRIMARY source of changes
+            - Use `Read` for files in the diff when you need full context beyond the hunks
+            - You MAY read related files (interfaces, parent classes, callers, test counterparts)
+              when needed to verify correctness — keep it targeted (max 5 extra file reads)
+            - Use `Grep`/`Glob` to find related code (e.g., who calls a changed method, where
+              an interface is implemented) — this is cheaper than reading full files
+            - Do NOT read unrelated files (README, wiki/, build configs not in the diff)
 
             ## Context Gathering (do this first, in order)
             1. Run `gh pr view ${{ github.event.pull_request.number }}` to read PR description
@@ -237,10 +238,13 @@ jobs:
                - Suggested patches as unified diffs (if applicable)
                - Next Actions for the author
 
-            Rules:
-            - Do NOT modify any source files. Only write the report file under reports/.
+            ## Safety
+            - Do NOT modify any source files — only write the report under reports/
+            - Do NOT run build, test, or formatting commands
+            - Do NOT push or commit changes
           claude_args: |
-            --allowedTools "Read,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Write"
+            --max-turns 15
+            --allowedTools "Glob,Grep,Read,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*),Write"
 
       - name: Upload review report
         if: ${{ hashFiles('reports/**') != '' }}

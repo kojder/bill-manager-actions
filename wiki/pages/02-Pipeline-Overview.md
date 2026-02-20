@@ -60,6 +60,7 @@ graph LR
 | **Automatic?** | Yes | No (needs mention) | No (manual) |
 | **Jobs** | 5 (enrich → checkstyle → test → review → cleanup) | 1 (claude) | 1 (pattern-check) |
 | **Can modify code?** | No (read-only + report) | Yes (Read/Write/Edit) | No (report only) |
+| **Can search codebase?** | Yes (Glob/Grep/Read — limited) | Yes (all tools) | No (diff only) |
 | **Can run tests?** | Yes (dedicated job) | Yes (`./mvnw test`) | No |
 | **Produces artifact?** | Yes (`claude-review-report-pr-N`) | No | Yes (`pattern-audit-pr-N`) |
 | **Uses CLAUDE.md rules?** | Yes (path-specific) | Yes (automatic) | Yes (explicit read) |

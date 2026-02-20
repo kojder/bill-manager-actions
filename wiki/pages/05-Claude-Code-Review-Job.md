@@ -92,11 +92,13 @@ The prompt defines a 4-step workflow:
 3. **PR Summary** — Post a top-level PR comment with overall assessment
 4. **Structured Report** — Write a markdown report to `reports/pr-{N}-review.md`
 
-### Safety Constraint
+### Safety Constraints
 
 ```
-Rules:
-- Do NOT modify any source files. Only write the report file under reports/.
+## Safety
+- Do NOT modify any source files — only write the report under reports/
+- Do NOT run build, test, or formatting commands
+- Do NOT push or commit changes
 ```
 
 ---
@@ -241,25 +243,32 @@ The claude-review job has a strict `allowedTools` whitelist:
 
 ```yaml
 claude_args: |
-  --allowedTools "mcp__github_inline_comment__create_inline_comment,
+  --max-turns 15
+  --allowedTools "Glob,Grep,Read,
+                  mcp__github_inline_comment__create_inline_comment,
                   Bash(gh pr comment:*),
                   Bash(gh pr diff:*),
                   Bash(gh pr view:*),
-                  Write,
-                  Bash(mkdir -p reports)"
+                  Write"
 ```
 
 | Tool | Purpose |
 |------|---------|
+| `Glob` | Find files by pattern (e.g., locate interfaces, test counterparts) |
+| `Grep` | Search code patterns (e.g., find callers of a changed method) |
+| `Read` | Read full file content (limited by token budget — max 5 files beyond diff) |
 | `mcp__github_inline_comment__create_inline_comment` | Post inline comments on specific PR lines |
 | `Bash(gh pr comment:*)` | Post top-level PR comments |
 | `Bash(gh pr diff:*)` | Read the PR diff |
 | `Bash(gh pr view:*)` | Read PR metadata and description |
 | `Write` | Write the structured report file |
-| `Bash(mkdir -p reports)` | Create the reports directory |
+
+Additional configuration:
+- `--max-turns 15` — limits the number of agentic turns to control token consumption
+- `use_sticky_comment: true` — edits a single PR comment instead of posting new ones on each push
 
 **What Claude CANNOT do in this job:**
-- Read or write arbitrary files (no `Read`, no `Edit`)
+- Edit source files (no `Edit` tool)
 - Run tests or checkstyle
 - Execute arbitrary bash commands
 - Push code or modify branches
