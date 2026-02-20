@@ -55,6 +55,17 @@ The project has a comprehensive **[GitHub Wiki](https://github.com/kojder/bill-m
 - `./ai/api-plan.md` - REST API plan, data models, error codes
 - `./ai/tasks.md` - Implementation task list with Claude Code Actions review mapping
 
+## Active Work (Local CLI Only)
+
+_This section applies to local Claude Code CLI sessions only. Skip when running as GitHub Action (code review context)._
+
+**Read `PROGRESS.md` at the start of every conversation** to understand:
+- The current task being worked on (always populated during active work)
+- Ideas backlog for future work
+- Detailed step breakdown for the current task
+
+When completing a task, follow the Completion Checklist in `PROGRESS.md` before removing it.
+
 ## Architecture Overview
 
 **Bill-Manager** is a Spring Boot 3.5.x application for automated bill analysis using LLMs.
@@ -142,6 +153,10 @@ For any complex, multi-step task:
 1. **Before writing code**, create a short plan and a checklist/todo list (use TodoWrite tool)
 2. **Execute step-by-step**, keeping the list updated so you don't drift off track
 3. **Mark tasks as completed** immediately after finishing them (don't batch completions)
+4. **On task completion**, follow the Completion Checklist in `PROGRESS.md`:
+   - Update `ai/tasks.md` if the task originated there
+   - Verify CLAUDE.md, wiki, and documentation consistency
+   - Only then remove the task from `PROGRESS.md`
 
 ## Code Conventions
 
