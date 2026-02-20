@@ -46,6 +46,12 @@ The CI/CD automation is the star of this project. The application exists to prov
 |------|-------------------|
 | [Security and Permissions](09-Security-and-Permissions) | Tool whitelists, GitHub permissions, secrets, fork safety |
 
+### I Want to Troubleshoot
+
+| Page | What You'll Learn |
+|------|-------------------|
+| [Troubleshooting and Lessons Learned](13-Troubleshooting-and-Lessons-Learned) | Common problems with Claude Code Actions CI, root causes, fixes, and setup checklist |
+
 ### I Want to Contribute or Set Up Locally
 
 | Page | What You'll Learn |
@@ -121,6 +127,7 @@ bill-manager-actions/
 | **Structured report** | Markdown artifact with execution plan, findings, patches | [Claude Code Review Job](05-Claude-Code-Review-Job) |
 | **`rerun` label** | Re-trigger full pipeline including enrichment | [CI Pipeline Deep Dive](03-CI-Pipeline-Deep-Dive) |
 | **Tool whitelists** | `--allowedTools` for least-privilege access | [Security and Permissions](09-Security-and-Permissions) |
+| **Troubleshooting** | Common CI problems and how to fix them | [Troubleshooting](13-Troubleshooting-and-Lessons-Learned) |
 
 ---
 

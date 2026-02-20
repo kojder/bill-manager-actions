@@ -265,6 +265,7 @@ See [Pattern Police](08-Pattern-Police) for details on what it checks.
 - [PR Enrichment and Task Workflow](06-PR-Enrichment-and-Task-Workflow) — How branch naming and task extraction work
 - [Checkstyle Configuration](10-Checkstyle-Configuration) — Detailed Checkstyle rules
 - [Application Architecture](11-Application-Architecture) — Project structure and tech stack
+- [Troubleshooting and Lessons Learned](13-Troubleshooting-and-Lessons-Learned) — Common CI problems and how to fix them
 
 ---
 

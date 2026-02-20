@@ -7,7 +7,22 @@ Read at the start of every conversation (referenced from CLAUDE.md).
 
 ## Current Task
 
-_No active task._
+### [W-1] Wiki page: Troubleshooting and Lessons Learned
+**Source:** ad-hoc
+**Branch:** `master` (docs-only change)
+**Status:** In Progress
+
+#### Steps
+- [ ] Create `wiki/pages/13-Troubleshooting-and-Lessons-Learned.md`
+- [ ] Update cross-links in 5 existing wiki pages (01, 03, 05, 09, 12)
+- [ ] Verify all internal links and Mermaid diagram
+- [ ] Commit
+
+#### Notes
+- Hybrid format: summary table + detailed problem cards
+- 10 historical problems extracted from git history
+- Mermaid symptom decision tree for quick navigation
+- Setup checklist for new projects (proactive section)
 
 <!-- Template for adding a new task:
 

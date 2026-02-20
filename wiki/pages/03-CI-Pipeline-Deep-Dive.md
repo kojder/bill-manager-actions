@@ -317,6 +317,7 @@ Claude Code Action validates that `ci.yml` on the PR branch matches the version 
 - [PR Enrichment and Task Workflow](06-PR-Enrichment-and-Task-Workflow) — How the enrich-description job works
 - [Checkstyle Configuration](10-Checkstyle-Configuration) — What the checkstyle job enforces
 - [Security and Permissions](09-Security-and-Permissions) — Tool restrictions and permissions explained
+- [Troubleshooting and Lessons Learned](13-Troubleshooting-and-Lessons-Learned) — Common pipeline problems (`always()` pattern, workflow validation, shell interpolation)
 
 ---
 

@@ -207,6 +207,7 @@ Claude Code Action enforces that the workflow file invoking it (`ci.yml`) must b
 - [Claude Code Review Job](05-Claude-Code-Review-Job) — Tool restrictions for the review job
 - [Interactive Claude Assistant](07-Interactive-Claude-Assistant) — Broader tool access explained
 - [Pattern Police](08-Pattern-Police) — Minimal read-only permissions
+- [Troubleshooting and Lessons Learned](13-Troubleshooting-and-Lessons-Learned) — Fork PR secrets, bot rejection, workflow validation workarounds
 
 ---
 

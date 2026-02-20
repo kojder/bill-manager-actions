@@ -298,9 +298,10 @@ For a full comparison of tool restrictions across all workflows, see [Security a
 - [CLAUDE.MD as Review Brain](04-CLAUDE-MD-as-Review-Brain) — The rules that guide the review
 - [PR Enrichment and Task Workflow](06-PR-Enrichment-and-Task-Workflow) — How task context reaches the review
 - [Security and Permissions](09-Security-and-Permissions) — Tool restrictions explained
+- [Troubleshooting and Lessons Learned](13-Troubleshooting-and-Lessons-Learned) — Token overflow, tool permission denials, missing search tools
 
 ---
 
-*Last updated: 2026-02-19*
+*Last updated: 2026-02-20*
 
 *Sources: `.github/workflows/ci.yml` (lines 176–245), `CLAUDE.md` (Review Scope), `ai/tasks.md` (expected review points examples)*
