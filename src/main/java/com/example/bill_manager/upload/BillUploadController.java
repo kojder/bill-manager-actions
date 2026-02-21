@@ -1,7 +1,10 @@
 package com.example.bill_manager.upload;
 
+import com.example.bill_manager.ai.BillAnalysisService;
 import com.example.bill_manager.dto.BillAnalysisResponse;
+import com.example.bill_manager.dto.BillAnalysisResult;
 import com.example.bill_manager.exception.AnalysisNotFoundException;
+import java.io.IOException;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -19,23 +22,36 @@ import org.springframework.web.multipart.MultipartFile;
 public class BillUploadController {
 
   private final FileValidationService fileValidationService;
+  private final ImagePreprocessingService imagePreprocessingService;
+  private final BillAnalysisService billAnalysisService;
   private final BillResultStore billResultStore;
 
   public BillUploadController(
-      final FileValidationService fileValidationService, final BillResultStore billResultStore) {
+      final FileValidationService fileValidationService,
+      final ImagePreprocessingService imagePreprocessingService,
+      final BillAnalysisService billAnalysisService,
+      final BillResultStore billResultStore) {
     this.fileValidationService = fileValidationService;
+    this.imagePreprocessingService = imagePreprocessingService;
+    this.billAnalysisService = billAnalysisService;
     this.billResultStore = billResultStore;
   }
 
   @PostMapping("/upload")
   public ResponseEntity<BillAnalysisResponse> uploadBill(
       @RequestParam("file") final MultipartFile file) {
-    fileValidationService.validateFile(file);
+    final String detectedMimeType = fileValidationService.validateFile(file);
     final String sanitizedFilename =
         fileValidationService.sanitizeFilename(file.getOriginalFilename());
+
+    final byte[] fileBytes = readFileBytes(file);
+    final byte[] processedBytes = imagePreprocessingService.preprocess(fileBytes, detectedMimeType);
+    final BillAnalysisResult analysis =
+        billAnalysisService.analyze(processedBytes, detectedMimeType);
+
     final UUID id = UUID.randomUUID();
     final BillAnalysisResponse response =
-        new BillAnalysisResponse(id, sanitizedFilename, null, Instant.now());
+        new BillAnalysisResponse(id, sanitizedFilename, analysis, Instant.now());
     billResultStore.save(id, response);
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
@@ -45,5 +61,16 @@ public class BillUploadController {
     final BillAnalysisResponse result =
         billResultStore.findById(id).orElseThrow(() -> new AnalysisNotFoundException(id));
     return ResponseEntity.ok(result);
+  }
+
+  private byte[] readFileBytes(final MultipartFile file) {
+    try {
+      return file.getBytes();
+    } catch (final IOException e) {
+      throw new FileValidationException(
+          FileValidationException.ErrorCode.FILE_UNREADABLE,
+          "Failed to read uploaded file content",
+          e);
+    }
   }
 }

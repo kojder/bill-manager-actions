@@ -2,7 +2,7 @@ package com.example.bill_manager.upload;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -10,8 +10,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.example.bill_manager.ai.BillAnalysisService;
 import com.example.bill_manager.dto.BillAnalysisResponse;
+import com.example.bill_manager.dto.BillAnalysisResult;
+import com.example.bill_manager.dto.LineItem;
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Nested;
@@ -26,17 +31,43 @@ import org.springframework.web.multipart.MultipartFile;
 @WebMvcTest(BillUploadController.class)
 class BillUploadControllerTest {
 
+  private static final String MIME_JPEG = "image/jpeg";
+
+  // spotless:off
+  private static final BillAnalysisResult MOCK_ANALYSIS =
+      new BillAnalysisResult(
+          "Test Store",
+          List.of(new LineItem("Milk", BigDecimal.ONE, new BigDecimal("3.49"), new BigDecimal("3.49"))),
+          new BigDecimal("3.49"),
+          "PLN",
+          List.of("grocery"));
+  // spotless:on
+
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private FileValidationService fileValidationService;
 
+  @MockitoBean private ImagePreprocessingService imagePreprocessingService;
+
+  @MockitoBean private BillAnalysisService billAnalysisService;
+
   @MockitoBean private BillResultStore billResultStore;
+
+  private void setupSuccessfulPipeline() {
+    when(fileValidationService.validateFile(any(MultipartFile.class))).thenReturn(MIME_JPEG);
+    when(imagePreprocessingService.preprocess(any(byte[].class), eq(MIME_JPEG)))
+        .thenReturn(new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF});
+    when(billAnalysisService.analyze(any(byte[].class), eq(MIME_JPEG))).thenReturn(MOCK_ANALYSIS);
+  }
 
   @Nested
   class UploadEndpoint {
 
     @Test
     void shouldReturn201WhenValidFileUploaded() throws Exception {
+      setupSuccessfulPipeline();
+      when(fileValidationService.sanitizeFilename("photo.jpg")).thenReturn("photo.jpg");
+
       final MockMultipartFile file =
           new MockMultipartFile(
               "file",
@@ -44,28 +75,28 @@ class BillUploadControllerTest {
               "image/jpeg",
               new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF});
 
-      doNothing().when(fileValidationService).validateFile(any(MultipartFile.class));
-      when(fileValidationService.sanitizeFilename("photo.jpg")).thenReturn("photo.jpg");
-
       mockMvc
           .perform(multipart("/api/bills/upload").file(file))
           .andExpect(status().isCreated())
           .andExpect(jsonPath("$.id").isNotEmpty())
           .andExpect(jsonPath("$.originalFileName").value("photo.jpg"))
+          .andExpect(jsonPath("$.analysis.merchantName").value("Test Store"))
+          .andExpect(jsonPath("$.analysis.totalAmount").value(3.49))
+          .andExpect(jsonPath("$.analysis.currency").value("PLN"))
           .andExpect(jsonPath("$.analyzedAt").isNotEmpty());
     }
 
     @Test
     void shouldReturnSanitizedFilename() throws Exception {
+      setupSuccessfulPipeline();
+      when(fileValidationService.sanitizeFilename("../../evil.jpg")).thenReturn("evil.jpg");
+
       final MockMultipartFile file =
           new MockMultipartFile(
               "file",
               "../../evil.jpg",
               "image/jpeg",
               new byte[] {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF});
-
-      doNothing().when(fileValidationService).validateFile(any(MultipartFile.class));
-      when(fileValidationService.sanitizeFilename("../../evil.jpg")).thenReturn("evil.jpg");
 
       mockMvc
           .perform(multipart("/api/bills/upload").file(file))
@@ -153,7 +184,7 @@ class BillUploadControllerTest {
     void shouldReturn200WhenResultExists() throws Exception {
       final UUID id = UUID.randomUUID();
       final BillAnalysisResponse stored =
-          new BillAnalysisResponse(id, "receipt.jpg", null, Instant.now());
+          new BillAnalysisResponse(id, "receipt.jpg", MOCK_ANALYSIS, Instant.now());
 
       when(billResultStore.findById(id)).thenReturn(Optional.of(stored));
 
@@ -161,7 +192,8 @@ class BillUploadControllerTest {
           .perform(get("/api/bills/" + id))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.id").value(id.toString()))
-          .andExpect(jsonPath("$.originalFileName").value("receipt.jpg"));
+          .andExpect(jsonPath("$.originalFileName").value("receipt.jpg"))
+          .andExpect(jsonPath("$.analysis.merchantName").value("Test Store"));
     }
 
     @Test
