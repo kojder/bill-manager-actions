@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bill Manager</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
+    h1 { margin-bottom: 0.25rem; }
+    p { color: #555; }
+    #result { margin-top: 1.5rem; white-space: pre-wrap; background: #f4f4f4; padding: 1rem; border-radius: 4px; display: none; font-size: 0.85rem; }
+    #error { color: #c00; margin-top: 1rem; display: none; }
+    #loading { margin-top: 1rem; display: none; color: #666; }
+    button { margin-top: 0.5rem; padding: 0.5rem 1.5rem; cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: 0.6; }
+  </style>
+</head>
+<body>
+  <h1>Bill Manager</h1>
+  <p>Upload a bill or receipt image (JPEG, PNG) for automated analysis.</p>
+  <form id="uploadForm">
+    <input type="file" id="fileInput" name="file" accept="image/jpeg,image/png" required>
+    <br>
+    <button type="submit" id="submitBtn">Analyze Bill</button>
+  </form>
+  <div id="loading">Analyzing...</div>
+  <div id="error"></div>
+  <div id="result"></div>
+
+  <script>
+    const form = document.getElementById('uploadForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingEl = document.getElementById('loading');
+    const errorEl = document.getElementById('error');
+    const resultEl = document.getElementById('result');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById('fileInput');
+      if (!fileInput.files.length) return;
+
+      errorEl.style.display = 'none';
+      resultEl.style.display = 'none';
+      loadingEl.style.display = 'block';
+      submitBtn.disabled = true;
+
+      const formData = new FormData();
+      formData.append('file', fileInput.files[0]);
+
+      try {
+        const response = await fetch('/api/bills/upload', { method: 'POST', body: formData });
+        const data = await response.json();
+        if (!response.ok) {
+          errorEl.textContent = 'Error ' + response.status + ': ' + data.code + ' \u2014 ' + data.message;
+          errorEl.style.display = 'block';
+        } else {
+          resultEl.textContent = JSON.stringify(data, null, 2);
+          resultEl.style.display = 'block';
+        }
+      } catch (err) {
+        errorEl.textContent = 'Network error: ' + err.message;
+        errorEl.style.display = 'block';
+      } finally {
+        loadingEl.style.display = 'none';
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

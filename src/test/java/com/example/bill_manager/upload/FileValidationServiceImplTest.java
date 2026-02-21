@@ -1,7 +1,6 @@
 package com.example.bill_manager.upload;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.bill_manager.config.UploadProperties;
@@ -31,34 +30,34 @@ class FileValidationServiceImplTest {
   class ValidFileValidation {
 
     @Test
-    void shouldAcceptValidJpegFile() {
+    void shouldAcceptValidJpegFileAndReturnMimeType() {
       final byte[] jpegContent = {
         (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00, 0x10, 0x4A, 0x46
       };
       final MockMultipartFile file =
           new MockMultipartFile("file", "photo.jpg", "image/jpeg", jpegContent);
 
-      assertThatCode(() -> service.validateFile(file)).doesNotThrowAnyException();
+      assertThat(service.validateFile(file)).isEqualTo("image/jpeg");
     }
 
     @Test
-    void shouldAcceptValidPngFile() {
+    void shouldAcceptValidPngFileAndReturnMimeType() {
       final byte[] pngContent = {
         (byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D
       };
       final MockMultipartFile file =
           new MockMultipartFile("file", "image.png", "image/png", pngContent);
 
-      assertThatCode(() -> service.validateFile(file)).doesNotThrowAnyException();
+      assertThat(service.validateFile(file)).isEqualTo("image/png");
     }
 
     @Test
-    void shouldAcceptValidPdfFile() {
+    void shouldAcceptValidPdfFileAndReturnMimeType() {
       final byte[] pdfContent = {0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34};
       final MockMultipartFile file =
           new MockMultipartFile("file", "document.pdf", "application/pdf", pdfContent);
 
-      assertThatCode(() -> service.validateFile(file)).doesNotThrowAnyException();
+      assertThat(service.validateFile(file)).isEqualTo("application/pdf");
     }
   }
 
@@ -113,7 +112,7 @@ class FileValidationServiceImplTest {
       final MockMultipartFile file =
           new MockMultipartFile("file", "exact.jpg", "image/jpeg", content);
 
-      assertThatCode(() -> service.validateFile(file)).doesNotThrowAnyException();
+      assertThat(service.validateFile(file)).isEqualTo("image/jpeg");
     }
   }
 

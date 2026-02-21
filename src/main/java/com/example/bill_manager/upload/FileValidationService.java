@@ -4,7 +4,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface FileValidationService {
 
-  void validateFile(MultipartFile file);
+  String validateFile(MultipartFile file);
 
   String sanitizeFilename(String originalFilename);
 }
