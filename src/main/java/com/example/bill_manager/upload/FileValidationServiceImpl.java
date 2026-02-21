@@ -24,10 +24,17 @@ public class FileValidationServiceImpl implements FileValidationService {
   }
 
   @Override
-  public void validateFile(final MultipartFile file) {
+  public String validateFile(final MultipartFile file) {
     validateFilePresence(file);
     validateFileSize(file);
-    validateMimeType(file);
+    final String detectedMimeType = detectMimeTypeFromContent(file);
+    if (detectedMimeType == null || !uploadProperties.isMimeTypeAllowed(detectedMimeType)) {
+      throw new FileValidationException(
+          FileValidationException.ErrorCode.UNSUPPORTED_MEDIA_TYPE,
+          "File type not supported. Allowed: "
+              + String.join(", ", uploadProperties.allowedMimeTypes()));
+    }
+    return detectedMimeType;
   }
 
   @Override
@@ -77,16 +84,6 @@ public class FileValidationServiceImpl implements FileValidationService {
           "File size exceeds maximum allowed size of "
               + uploadProperties.maxFileSizeBytes()
               + " bytes");
-    }
-  }
-
-  private void validateMimeType(final MultipartFile file) {
-    final String detectedMimeType = detectMimeTypeFromContent(file);
-    if (detectedMimeType == null || !uploadProperties.isMimeTypeAllowed(detectedMimeType)) {
-      throw new FileValidationException(
-          FileValidationException.ErrorCode.UNSUPPORTED_MEDIA_TYPE,
-          "File type not supported. Allowed: "
-              + String.join(", ", uploadProperties.allowedMimeTypes()));
     }
   }
 

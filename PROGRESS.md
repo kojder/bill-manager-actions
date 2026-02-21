@@ -7,29 +7,28 @@ Read at the start of every conversation (referenced from CLAUDE.md).
 
 ## Current Task
 
-### [W-2] Create spring-boot-implementer Claude Code Skill
-**Source:** ad-hoc
-**Status:** In Progress
+### [W-3] Task 10: End-to-End Integration + Simple UI
+**Source:** tasks.md Task 10
+**Branch:** `feat/task-10-integration`
+**Status:** Review
 
 #### Steps
-- [x] Scaffold skill with init_skill.py
-- [x] Remove scaffolded example files
-- [x] Write references/dto-exception.md
-- [x] Write references/service.md
-- [x] Write references/controller.md
-- [x] Write references/config.md
-- [x] Write references/testing.md
-- [x] Write references/spring-ai.md
-- [x] Write SKILL.md (frontmatter + body)
-- [x] Verify skill structure
-- [x] Commit
+- [x] Add `detectMimeType` to `FileValidationService` interface + impl
+- [x] Refactor `BillResultStore` → interface + `InMemoryResultStore`
+- [x] Wire full pipeline in `BillUploadController` (4 services)
+- [x] Create `HealthController` + `HealthResponse`
+- [x] Create `index.html` upload form
+- [x] Update `BillUploadControllerTest` (unit tests)
+- [x] Create `InMemoryResultStoreTest`
+- [x] Create `BillUploadIntegrationTest`
+- [x] Run formatters, checkstyle, tests (117 tests, 0 failures)
+- [x] Update documentation (tasks.md)
 
 #### Notes
-- Implementation guide skill (complements spring-java-reviewer for code review)
-- Copy-paste-ready templates with `// TODO:` markers, not checklists
-- Three-layer architecture: CLAUDE.md (conventions) → reviewer (verification) → implementer (writing)
-- 6 reference files by component type for granular context loading
-- All content in English
+- Synchronous pipeline: upload → validate → detect MIME → preprocess → AI analyze → store → return
+- `BillResultStore` class → interface + `InMemoryResultStore` (SOLID DIP)
+- Custom `/api/health` endpoint (separate from Actuator `/actuator/health`)
+- Mock only `BillAnalysisService` in integration tests (real validation + preprocessing)
 
 <!-- Template for adding a new task:
 
