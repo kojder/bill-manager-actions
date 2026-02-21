@@ -7,25 +7,29 @@ Read at the start of every conversation (referenced from CLAUDE.md).
 
 ## Current Task
 
-### [W-1] Create spring-java-reviewer Claude Code Skill
+### [W-2] Create spring-boot-implementer Claude Code Skill
 **Source:** ad-hoc
 **Status:** In Progress
 
 #### Steps
 - [x] Scaffold skill with init_skill.py
 - [x] Remove scaffolded example files
+- [x] Write references/dto-exception.md
+- [x] Write references/service.md
+- [x] Write references/controller.md
+- [x] Write references/config.md
+- [x] Write references/testing.md
+- [x] Write references/spring-ai.md
 - [x] Write SKILL.md (frontmatter + body)
-- [x] Write references/java-and-solid.md
-- [x] Write references/spring-ecosystem.md
-- [x] Write references/security-guidelines.md
 - [x] Verify skill structure
-- [ ] Commit
+- [x] Commit
 
 #### Notes
-- Local interactive code review skill (complements CI review)
-- Progressive disclosure: SKILL.md lean, references loaded per module
-- All content in English (skill-creator best practice)
-- Covers full target stack: Java 17, Spring Boot 3.5, Spring Security, Data JPA, Integration, AI
+- Implementation guide skill (complements spring-java-reviewer for code review)
+- Copy-paste-ready templates with `// TODO:` markers, not checklists
+- Three-layer architecture: CLAUDE.md (conventions) → reviewer (verification) → implementer (writing)
+- 6 reference files by component type for granular context loading
+- All content in English
 
 <!-- Template for adding a new task:
 
