@@ -401,7 +401,8 @@
 
 **Implementation notes:**
 - `ci.yml` review now uses `fetch-depth: 0` (full history) and `GH_TOKEN` env pattern
-- Structured report saved as `reports/pr-{N}-review.md` and uploaded as artifact `claude-review-report-pr-{N}`
+- ~~Structured report saved as `reports/pr-{N}-review.md`~~ — removed (caused commit loop in tag mode; `track_progress` forces tag mode which adds Write + git push to allowedTools)
+- Review output: inline PR comments + summary comment (via `gh pr comment`); token usage JSON as artifact
 - `claude.yml` allowedTools: Read, Write, Edit, gh CLI (pr/issue), git (diff/log/status), mvnw (checkstyle/test)
 - Pattern Police reads CLAUDE.md path-specific rules and checks PR diff for architecture violations
 - All patterns based on `claude-code-action-ideas` repository best practices
