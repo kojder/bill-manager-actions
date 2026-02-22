@@ -53,6 +53,13 @@
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 
+		<!-- PDF to image conversion -->
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>3.0.4</version>
+		</dependency>
+
 		<!-- Load .env file automatically -->
 		<dependency>
 			<groupId>me.paulschwarz</groupId>

@@ -15,6 +15,7 @@
 | Linter | Checkstyle | 10.23.1 | Static code analysis, blocking in CI |
 | CI/CD | GitHub Actions | - | Native integration with Claude Code Actions Review |
 | Code Review | Claude Code Actions | v1 | Automated review via `anthropics/claude-code-action` |
+| PDF Processing | Apache PDFBox | 3.0.4 | PDF-to-image conversion for vision API |
 | Utility | Lombok | - | Boilerplate reduction |
 
 ## 2. Application Architecture
@@ -38,6 +39,20 @@
                 └──────────┬───────────┘
                            │
                            ▼
+                           │
+                    ┌──────┴──────┐
+                    │ PDF?        │
+                    └──┬──────┬───┘
+                  yes  │      │ no
+                       ▼      │
+                ┌─────────────────────┐
+                │PdfConversionService │  (upload/)
+                │  - PDFBox render    │
+                │  - page → JPEG      │
+                │  - max pages limit  │
+                └──────────┬──────────┘
+                           │      │
+                           ▼      ▼
                 ┌──────────────────────┐
                 │ImagePreprocessing-   │  (upload/)
                 │Service               │
@@ -52,6 +67,7 @@
                 │  - timeout 30s       │
                 │  - retry 3x (exp.)   │
                 │  - structured output │
+                │  - multi-image (≤5)  │
                 └──────────┬───────────┘
                            │
                            ▼
@@ -79,15 +95,20 @@ com.example.bill_manager/
 │   ├── BillAnalysisServiceImpl.java # ChatClient, structured output, retry
 │   └── BillAnalysisException.java   # Custom exception with ErrorCode enum
 │
-├── upload/         # Upload, validation, preprocessing
+├── upload/         # Upload, validation, preprocessing, PDF conversion
 │   ├── BillUploadController.java    # REST endpoints
-│   ├── BillResultStore.java         # In-memory storage (ConcurrentHashMap)
+│   ├── BillResultStore.java         # Interface for result storage
+│   ├── InMemoryResultStore.java     # @Component, ConcurrentHashMap
 │   ├── FileValidationService.java   # Interface
 │   ├── FileValidationServiceImpl.java # MIME magic bytes, size, filename
 │   ├── FileValidationException.java # Custom exception with ErrorCode enum
 │   ├── ImagePreprocessingService.java    # Interface
 │   ├── ImagePreprocessingServiceImpl.java # resize, strip EXIF
-│   └── ImagePreprocessingException.java  # Custom exception with ErrorCode enum
+│   ├── ImagePreprocessingException.java  # Custom exception with ErrorCode enum
+│   ├── ImageWriteUtils.java         # Package-private JPEG/PNG write utility
+│   ├── PdfConversionService.java    # Interface
+│   ├── PdfConversionServiceImpl.java # PDFBox page rendering
+│   └── PdfConversionException.java  # Custom exception with ErrorCode enum
 │
 ├── dto/            # Java Records (immutable DTOs)
 │   ├── BillAnalysisResult.java     # AI analysis result
@@ -178,7 +199,7 @@ Groq provides an OpenAI-compatible endpoint, allowing the use of Spring AI OpenA
 ```properties
 spring.ai.openai.api-key=${GROQ_API_KEY}
 spring.ai.openai.base-url=https://api.groq.com/openai/v1
-spring.ai.openai.chat.options.model=llama-3.2-11b-vision-preview
+spring.ai.openai.chat.options.model=meta-llama/llama-4-scout-17b-16e-instruct
 spring.ai.openai.chat.options.temperature=0.3
 spring.ai.openai.chat.options.max-tokens=2048
 ```

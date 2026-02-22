@@ -7,7 +7,25 @@ Read at the start of every conversation (referenced from CLAUDE.md).
 
 ## Current Task
 
-_No active task._
+### [W-1] PDF Support — PDF-to-Image Conversion Pipeline
+**Source:** tasks.md Task 15
+**Branch:** `feat/task-15-pdf-support`
+**Status:** In Progress (verification pending)
+
+#### Steps
+- [x] PDFBox dependency + config (pom.xml, UploadProperties, application.properties)
+- [x] ImageWriteUtils extraction (DRY refactor)
+- [x] PdfConversionService (exception, interface, implementation)
+- [x] BillAnalysisService interface change to List<byte[]>
+- [x] Controller + ExceptionHandler + Cleanup
+- [x] Tests (new + updated existing) — 131 pass, 0 fail
+- [x] Documentation (tasks.md, api-plan.md, tech-stack.md, wiki)
+- [ ] Final verification: spotless + checkstyle + tests
+
+#### Notes
+- Single-model strategy: Llama 4 Scout for both images and converted PDF pages
+- PDFBox 3.x `InvalidPasswordException` caught explicitly for encrypted PDFs
+- `ImageWriteUtils` extracted for DRY between preprocessing and PDF conversion
 
 <!-- Template for adding a new task:
 

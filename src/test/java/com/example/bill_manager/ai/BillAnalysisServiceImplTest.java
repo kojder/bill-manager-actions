@@ -12,6 +12,9 @@ import static org.mockito.Mockito.when;
 import com.example.bill_manager.config.GroqApiProperties;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -105,7 +108,7 @@ class BillAnalysisServiceImplTest {
   class InputValidation {
 
     @Test
-    void shouldThrowExceptionForNullImageData() {
+    void shouldThrowExceptionForNullImageList() {
       assertThatThrownBy(() -> service.analyze(null, MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .extracting(e -> ((BillAnalysisException) e).getErrorCode())
@@ -113,23 +116,50 @@ class BillAnalysisServiceImplTest {
     }
 
     @Test
-    void shouldThrowExceptionForNullMimeType() {
-      assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, null))
+    void shouldThrowExceptionForEmptyImageList() {
+      assertThatThrownBy(() -> service.analyze(Collections.emptyList(), MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .extracting(e -> ((BillAnalysisException) e).getErrorCode())
           .isEqualTo(BillAnalysisException.ErrorCode.INVALID_INPUT);
     }
 
     @Test
-    void shouldThrowExceptionForPdfMimeType() {
-      assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, "application/pdf"))
+    void shouldThrowExceptionForNullMimeType() {
+      assertThatThrownBy(() -> service.analyze(List.of(SAMPLE_IMAGE), null))
+          .isInstanceOf(BillAnalysisException.class)
+          .extracting(e -> ((BillAnalysisException) e).getErrorCode())
+          .isEqualTo(BillAnalysisException.ErrorCode.INVALID_INPUT);
+    }
+
+    @Test
+    void shouldThrowExceptionForTooManyImages() {
+      final List<byte[]> sixImages =
+          List.of(
+              SAMPLE_IMAGE, SAMPLE_IMAGE, SAMPLE_IMAGE, SAMPLE_IMAGE, SAMPLE_IMAGE, SAMPLE_IMAGE);
+
+      assertThatThrownBy(() -> service.analyze(sixImages, MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .satisfies(
               e -> {
                 final BillAnalysisException ex = (BillAnalysisException) e;
                 assertThat(ex.getErrorCode())
-                    .isEqualTo(BillAnalysisException.ErrorCode.UNSUPPORTED_FORMAT);
-                assertThat(ex.getMessage()).contains("PDF");
+                    .isEqualTo(BillAnalysisException.ErrorCode.INVALID_INPUT);
+                assertThat(ex.getMessage()).contains("Too many images");
+              });
+    }
+
+    @Test
+    void shouldThrowExceptionForNullEntryInImageList() {
+      final List<byte[]> withNull = Arrays.asList(SAMPLE_IMAGE, null);
+
+      assertThatThrownBy(() -> service.analyze(withNull, MIME_JPEG))
+          .isInstanceOf(BillAnalysisException.class)
+          .satisfies(
+              e -> {
+                final BillAnalysisException ex = (BillAnalysisException) e;
+                assertThat(ex.getErrorCode())
+                    .isEqualTo(BillAnalysisException.ErrorCode.INVALID_INPUT);
+                assertThat(ex.getMessage()).contains("null entries");
               });
     }
 
@@ -137,7 +167,7 @@ class BillAnalysisServiceImplTest {
     void shouldThrowExceptionForOversizedImage() {
       final byte[] oversized = new byte[6 * 1024 * 1024];
 
-      assertThatThrownBy(() -> service.analyze(oversized, MIME_JPEG))
+      assertThatThrownBy(() -> service.analyze(List.of(oversized), MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .extracting(e -> ((BillAnalysisException) e).getErrorCode())
           .isEqualTo(BillAnalysisException.ErrorCode.PROMPT_TOO_LARGE);
@@ -151,7 +181,7 @@ class BillAnalysisServiceImplTest {
     void shouldReturnBillAnalysisResultForValidImage() {
       when(callResponseSpec.content()).thenReturn(VALID_JSON);
 
-      final var result = service.analyze(SAMPLE_IMAGE, MIME_JPEG);
+      final var result = service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG);
 
       assertThat(result).isNotNull();
       assertThat(result.merchantName()).isEqualTo("Test Store");
@@ -166,7 +196,7 @@ class BillAnalysisServiceImplTest {
     void shouldHandleNullCategoryTags() {
       when(callResponseSpec.content()).thenReturn(VALID_JSON_NULL_TAGS);
 
-      final var result = service.analyze(SAMPLE_IMAGE, MIME_JPEG);
+      final var result = service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG);
 
       assertThat(result).isNotNull();
       assertThat(result.categoryTags()).isNull();
@@ -177,7 +207,7 @@ class BillAnalysisServiceImplTest {
     void shouldCallChatClientWithUserPrompt() {
       when(callResponseSpec.content()).thenReturn(VALID_JSON);
 
-      service.analyze(SAMPLE_IMAGE, MIME_JPEG);
+      service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG);
 
       final ArgumentCaptor<Consumer<PromptUserSpec>> captor =
           ArgumentCaptor.forClass(Consumer.class);
@@ -189,7 +219,17 @@ class BillAnalysisServiceImplTest {
     void shouldAcceptPngMimeType() {
       when(callResponseSpec.content()).thenReturn(VALID_JSON);
 
-      final var result = service.analyze(SAMPLE_IMAGE, "image/png");
+      final var result = service.analyze(List.of(SAMPLE_IMAGE), "image/png");
+
+      assertThat(result).isNotNull();
+      assertThat(result.merchantName()).isEqualTo("Test Store");
+    }
+
+    @Test
+    void shouldAcceptMultipleImages() {
+      when(callResponseSpec.content()).thenReturn(VALID_JSON);
+
+      final var result = service.analyze(List.of(SAMPLE_IMAGE, SAMPLE_IMAGE), MIME_JPEG);
 
       assertThat(result).isNotNull();
       assertThat(result.merchantName()).isEqualTo("Test Store");
@@ -206,7 +246,7 @@ class BillAnalysisServiceImplTest {
           .thenThrow(new RestClientException("Connection refused"))
           .thenReturn(VALID_JSON);
 
-      final var result = service.analyze(SAMPLE_IMAGE, MIME_JPEG);
+      final var result = service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG);
 
       assertThat(result).isNotNull();
       assertThat(result.merchantName()).isEqualTo("Test Store");
@@ -219,7 +259,7 @@ class BillAnalysisServiceImplTest {
           .thenThrow(new ResourceAccessException("Timeout"))
           .thenReturn(VALID_JSON);
 
-      final var result = service.analyze(SAMPLE_IMAGE, MIME_JPEG);
+      final var result = service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG);
 
       assertThat(result).isNotNull();
       verify(callResponseSpec, times(2)).content();
@@ -231,7 +271,7 @@ class BillAnalysisServiceImplTest {
           .thenThrow(new TransientAiException("Rate limited"))
           .thenReturn(VALID_JSON);
 
-      final var result = service.analyze(SAMPLE_IMAGE, MIME_JPEG);
+      final var result = service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG);
 
       assertThat(result).isNotNull();
       verify(callResponseSpec, times(2)).content();
@@ -241,7 +281,7 @@ class BillAnalysisServiceImplTest {
     void shouldThrowServiceUnavailableAfterRetriesExhausted() {
       when(callResponseSpec.content()).thenThrow(new RestClientException("Connection refused"));
 
-      assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, MIME_JPEG))
+      assertThatThrownBy(() -> service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .satisfies(
               e -> {
@@ -257,7 +297,7 @@ class BillAnalysisServiceImplTest {
       when(callResponseSpec.content())
           .thenThrow(new NonTransientAiException("Content policy violation"));
 
-      assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, MIME_JPEG))
+      assertThatThrownBy(() -> service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .satisfies(
               e -> {
@@ -276,7 +316,7 @@ class BillAnalysisServiceImplTest {
     void shouldThrowInvalidResponseForEmptyLlmResponse() {
       when(callResponseSpec.content()).thenReturn("");
 
-      assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, MIME_JPEG))
+      assertThatThrownBy(() -> service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .extracting(e -> ((BillAnalysisException) e).getErrorCode())
           .isEqualTo(BillAnalysisException.ErrorCode.INVALID_RESPONSE);
@@ -286,7 +326,7 @@ class BillAnalysisServiceImplTest {
     void shouldThrowInvalidResponseForNullLlmResponse() {
       when(callResponseSpec.content()).thenReturn(null);
 
-      assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, MIME_JPEG))
+      assertThatThrownBy(() -> service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .extracting(e -> ((BillAnalysisException) e).getErrorCode())
           .isEqualTo(BillAnalysisException.ErrorCode.INVALID_RESPONSE);
@@ -296,7 +336,7 @@ class BillAnalysisServiceImplTest {
     void shouldThrowInvalidResponseForUnparsableJson() {
       when(callResponseSpec.content()).thenReturn("not a valid json {{{");
 
-      assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, MIME_JPEG))
+      assertThatThrownBy(() -> service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .extracting(e -> ((BillAnalysisException) e).getErrorCode())
           .isEqualTo(BillAnalysisException.ErrorCode.INVALID_RESPONSE);
@@ -306,7 +346,7 @@ class BillAnalysisServiceImplTest {
     void shouldThrowInvalidResponseForResultWithNoItems() {
       when(callResponseSpec.content()).thenReturn(JSON_NO_ITEMS);
 
-      assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, MIME_JPEG))
+      assertThatThrownBy(() -> service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .satisfies(
               e -> {
@@ -321,7 +361,7 @@ class BillAnalysisServiceImplTest {
     void shouldThrowInvalidResponseForBlankRequiredFields() {
       when(callResponseSpec.content()).thenReturn(JSON_BLANK_MERCHANT);
 
-      assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, MIME_JPEG))
+      assertThatThrownBy(() -> service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .satisfies(
               e -> {
@@ -336,7 +376,7 @@ class BillAnalysisServiceImplTest {
     void shouldThrowAnalysisFailedForUnexpectedException() {
       when(callResponseSpec.content()).thenThrow(new RuntimeException("Unexpected"));
 
-      assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, MIME_JPEG))
+      assertThatThrownBy(() -> service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .extracting(e -> ((BillAnalysisException) e).getErrorCode())
           .isEqualTo(BillAnalysisException.ErrorCode.ANALYSIS_FAILED);
@@ -347,7 +387,7 @@ class BillAnalysisServiceImplTest {
       when(callResponseSpec.content())
           .thenThrow(new RestClientException("API key invalid: gsk_abc123..."));
 
-      assertThatThrownBy(() -> service.analyze(SAMPLE_IMAGE, MIME_JPEG))
+      assertThatThrownBy(() -> service.analyze(List.of(SAMPLE_IMAGE), MIME_JPEG))
           .isInstanceOf(BillAnalysisException.class)
           .satisfies(
               e -> {

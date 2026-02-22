@@ -1,5 +1,6 @@
 package com.example.bill_manager.config;
 
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -15,7 +16,15 @@ public record UploadProperties(
     @Min(value = 1, message = "Max file size must be at least 1 byte")
     Long maxFileSizeBytes,
     @NotEmpty(message = "Allowed MIME types must not be empty")
-    List<String> allowedMimeTypes) {
+    List<String> allowedMimeTypes,
+    @NotNull(message = "PDF render DPI must not be null")
+    @Min(value = 72, message = "PDF render DPI must be at least 72")
+    @Max(value = 600, message = "PDF render DPI must not exceed 600")
+    Integer pdfRenderDpi,
+    @NotNull(message = "PDF max pages must not be null")
+    @Min(value = 1, message = "PDF max pages must be at least 1")
+    @Max(value = 5, message = "PDF max pages must not exceed 5")
+    Integer pdfMaxPages) {
   // spotless:on
   public boolean isFileSizeValid(final long fileSizeBytes) {
     return fileSizeBytes > 0 && fileSizeBytes <= maxFileSizeBytes;

@@ -55,8 +55,8 @@ Upload a bill file and trigger automatic AI analysis.
 | 201 | Success — file uploaded and analyzed |
 | 400 | Missing file in request or empty file |
 | 413 | File exceeds size limit (10MB) |
-| 415 | Unsupported MIME type (not JPEG/PNG/PDF) or unsupported format (PDF for vision API) |
-| 422 | Image cannot be read or decoded (corrupt/unsupported image data) |
+| 415 | Unsupported MIME type (not JPEG/PNG/PDF) |
+| 422 | Image cannot be read or decoded, or PDF is corrupted/empty |
 | 500 | Internal server error |
 | 503 | Groq API unavailable (after retries exhausted) |
 
@@ -203,8 +203,13 @@ Application error codes:
 | `ANALYSIS_NOT_FOUND` | Analysis with given ID not found |
 | `INVALID_ID_FORMAT` | ID is not a valid UUID |
 | `INVALID_INPUT` | Missing or null image data / MIME type |
-| `UNSUPPORTED_FORMAT` | PDF upload (vision API does not support PDF) |
+| `UNSUPPORTED_FORMAT` | Unsupported file format for analysis |
 | `PROMPT_TOO_LARGE` | Image exceeds 5MB size limit for analysis |
+| `PDF_READ_FAILED` | PDF file is corrupted or cannot be read |
+| `PDF_ENCRYPTED` | Password-protected PDF (not supported) |
+| `PDF_EMPTY` | PDF has no pages to process |
+| `PDF_TOO_MANY_PAGES` | PDF exceeds maximum page limit |
+| `CONVERSION_FAILED` | Unexpected error during PDF-to-image conversion |
 | `ANALYSIS_FAILED` | Unexpected error during AI analysis |
 | `INVALID_RESPONSE` | LLM returned unparseable or invalid response |
 | `SERVICE_UNAVAILABLE` | Groq API unavailable after retries exhausted |

@@ -22,7 +22,8 @@ class FileValidationServiceImplTest {
   @BeforeEach
   void setUp() {
     final UploadProperties properties =
-        new UploadProperties(MAX_FILE_SIZE, List.of("image/jpeg", "image/png", "application/pdf"));
+        new UploadProperties(
+            MAX_FILE_SIZE, List.of("image/jpeg", "image/png", "application/pdf"), 150, 5);
     service = new FileValidationServiceImpl(properties);
   }
 

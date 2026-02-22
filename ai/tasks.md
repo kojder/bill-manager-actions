@@ -432,13 +432,59 @@
 
 ---
 
+### Task 15: PDF Support — PDF-to-Image Conversion Pipeline
+
+**Status:** In progress (branch `feat/task-15-pdf-support`)
+
+**Description:** Enable PDF bill upload and analysis by converting PDF pages to JPEG images via Apache PDFBox, then sending them to the existing vision LLM (Llama 4 Scout on Groq). Single-model strategy — vision model handles both images and converted PDF pages.
+
+**Scope:**
+- New: `pom.xml` — Apache PDFBox 3.0.4 dependency
+- Modified: `src/main/java/.../config/UploadProperties.java` — added `pdfRenderDpi` and `pdfMaxPages` fields
+- New: `src/main/java/.../upload/ImageWriteUtils.java` — package-private utility (DRY refactor from ImagePreprocessingServiceImpl)
+- New: `src/main/java/.../upload/PdfConversionService.java` (interface)
+- New: `src/main/java/.../upload/PdfConversionServiceImpl.java` — PDFBox rendering, page-to-JPEG conversion
+- New: `src/main/java/.../upload/PdfConversionException.java` — ErrorCode enum: `PDF_READ_FAILED`, `PDF_ENCRYPTED`, `PDF_EMPTY`, `PDF_TOO_MANY_PAGES`, `CONVERSION_FAILED`
+- Modified: `src/main/java/.../ai/BillAnalysisService.java` — interface change: `analyze(byte[], String)` → `analyze(List<byte[]>, String)` for multi-page support
+- Modified: `src/main/java/.../ai/BillAnalysisServiceImpl.java` — removed PDF rejection, multi-image support (max 5), updated system prompt
+- Modified: `src/main/java/.../upload/BillUploadController.java` — PDF/image branching logic
+- Modified: `src/main/java/.../exception/GlobalExceptionHandler.java` — PdfConversionException handler
+- Modified: `src/main/java/.../upload/ImagePreprocessingServiceImpl.java` — removed PDF passthrough, delegates to ImageWriteUtils
+- Modified: `src/main/resources/application.properties`, `application-dev.properties` — PDF config properties
+- Modified: `src/main/resources/static/index.html` — updated accept attribute and text
+- New: `src/test/java/.../upload/PdfConversionServiceImplTest.java` — 8 tests (conversion, error handling)
+- Modified: `src/test/java/.../ai/BillAnalysisServiceImplTest.java` — updated to List<byte[]> API, new multi-image tests
+- Modified: `src/test/java/.../upload/BillUploadControllerTest.java` — PDF pipeline tests
+- Modified: `src/test/java/.../BillUploadIntegrationTest.java` — PDF integration test
+
+**Claude review:** **CLAUDE.md Upload Module review rules** + **CLAUDE.md AI Module review rules**
+
+**Expected review points:**
+- [ ] PDFBox resource management (try-with-resources for PDDocument)
+- [ ] Encrypted PDF detection and rejection
+- [ ] Page count limit enforcement (max 5 pages)
+- [ ] Multi-image API not exceeding Groq vision limits
+- [ ] DRY: ImageWriteUtils shared between preprocessing and PDF conversion
+
+**Implementation notes:**
+- Single-model strategy: Llama 4 Scout handles both images and converted PDF pages via vision API
+- Cost difference between 1-model and 2-model approach: ~$0.0002/receipt — negligible
+- PDFBox `Loader.loadPDF()` throws `InvalidPasswordException` (extends IOException) for encrypted PDFs — caught explicitly
+- PDF pages rendered at configurable DPI (default 150), then preprocessed (resize to 1200px) before analysis
+- `ImageWriteUtils` extracted from `ImagePreprocessingServiceImpl` to avoid JPEG write logic duplication
+- 131 total tests, 0 failures
+
+**Size:** L
+
+---
+
 ## Claude Code Actions Review Mapping
 
 | CLAUDE.md review section | Tasks | Key review points |
 |--------------------------|-------|-------------------|
 | Global review scope | 2, 3, 5, 10, 11, 13, 14 | Architecture, Records, REST conventions, workflow quality, CI security |
 | Config Module rules | 4, 12 | Secrets, env separation, configurable URLs, Jira API secrets |
-| Upload Module rules | 6, 7, 8 | MIME validation, size limits, path traversal, preprocessing |
-| AI Module rules | 9 | Timeout, retry, exponential backoff, structured output |
+| Upload Module rules | 6, 7, 8, 15 | MIME validation, size limits, path traversal, preprocessing, PDF conversion |
+| AI Module rules | 9, 15 | Timeout, retry, exponential backoff, structured output, multi-image |
 
 **Coverage:** Each review rule set exercised in at least 1 PR.

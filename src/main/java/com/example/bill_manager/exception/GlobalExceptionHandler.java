@@ -4,6 +4,7 @@ import com.example.bill_manager.ai.BillAnalysisException;
 import com.example.bill_manager.dto.ErrorResponse;
 import com.example.bill_manager.upload.FileValidationException;
 import com.example.bill_manager.upload.ImagePreprocessingException;
+import com.example.bill_manager.upload.PdfConversionException;
 import java.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,6 +61,14 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(response);
   }
 
+  @ExceptionHandler(PdfConversionException.class)
+  public ResponseEntity<ErrorResponse> handlePdfConversion(final PdfConversionException ex) {
+    final HttpStatus status = mapPdfConversionErrorCodeToStatus(ex.getErrorCode());
+    final ErrorResponse response =
+        new ErrorResponse(ex.getErrorCode().name(), ex.getMessage(), Instant.now());
+    return ResponseEntity.status(status).body(response);
+  }
+
   @ExceptionHandler(ImagePreprocessingException.class)
   public ResponseEntity<ErrorResponse> handleImagePreprocessing(
       final ImagePreprocessingException ex) {
@@ -99,6 +108,15 @@ public class GlobalExceptionHandler {
     return switch (errorCode) {
       case IMAGE_READ_FAILED -> HttpStatus.UNPROCESSABLE_ENTITY;
       case PREPROCESSING_FAILED -> HttpStatus.INTERNAL_SERVER_ERROR;
+    };
+  }
+
+  private HttpStatus mapPdfConversionErrorCodeToStatus(
+      final PdfConversionException.ErrorCode errorCode) {
+    return switch (errorCode) {
+      case PDF_READ_FAILED, PDF_EMPTY -> HttpStatus.UNPROCESSABLE_ENTITY;
+      case PDF_ENCRYPTED, PDF_TOO_MANY_PAGES -> HttpStatus.BAD_REQUEST;
+      case CONVERSION_FAILED -> HttpStatus.INTERNAL_SERVER_ERROR;
     };
   }
 

@@ -1,6 +1,7 @@
 package com.example.bill_manager;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -14,9 +15,16 @@ import com.example.bill_manager.dto.BillAnalysisResult;
 import com.example.bill_manager.dto.LineItem;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
 import javax.imageio.ImageIO;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
+import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -61,7 +69,7 @@ class BillUploadIntegrationTest {
               "PLN",
               List.of("grocery"));
 
-      when(billAnalysisService.analyze(any(byte[].class), eq("image/jpeg"))).thenReturn(mockResult);
+      when(billAnalysisService.analyze(anyList(), eq("image/jpeg"))).thenReturn(mockResult);
 
       final MockMultipartFile file =
           new MockMultipartFile("file", "receipt.jpg", "image/jpeg", validJpegBytes);
@@ -89,7 +97,7 @@ class BillUploadIntegrationTest {
               "PLN",
               null);
 
-      when(billAnalysisService.analyze(any(byte[].class), eq("image/jpeg"))).thenReturn(mockResult);
+      when(billAnalysisService.analyze(anyList(), eq("image/jpeg"))).thenReturn(mockResult);
 
       final MockMultipartFile file =
           new MockMultipartFile("file", "bill.jpg", "image/jpeg", validJpegBytes);
@@ -109,33 +117,42 @@ class BillUploadIntegrationTest {
           .andExpect(jsonPath("$.id").value(id))
           .andExpect(jsonPath("$.analysis.merchantName").value("Shop XYZ"));
     }
+
+    @Test
+    void shouldAnalyzePdfBillAndReturn201() throws Exception {
+      final BillAnalysisResult mockResult =
+          new BillAnalysisResult(
+              "Faktura Sp. z o.o.",
+              List.of(
+                  new LineItem(
+                      "Usługa",
+                      BigDecimal.ONE,
+                      new BigDecimal("100.00"),
+                      new BigDecimal("100.00"))),
+              new BigDecimal("100.00"),
+              "PLN",
+              List.of("services"));
+
+      when(billAnalysisService.analyze(anyList(), eq("image/jpeg"))).thenReturn(mockResult);
+
+      final MockMultipartFile file =
+          new MockMultipartFile("file", "invoice.pdf", "application/pdf", createSimplePdf());
+
+      mockMvc
+          .perform(multipart("/api/bills/upload").file(file))
+          .andExpect(status().isCreated())
+          .andExpect(jsonPath("$.originalFileName").value("invoice.pdf"))
+          .andExpect(jsonPath("$.analysis.merchantName").value("Faktura Sp. z o.o."))
+          .andExpect(jsonPath("$.analysis.totalAmount").value(100.00));
+    }
   }
 
   @Nested
   class ErrorPaths {
 
     @Test
-    void shouldReturn415WhenPdfUploaded() throws Exception {
-      final byte[] pdfBytes = "%PDF-1.4 test".getBytes();
-
-      when(billAnalysisService.analyze(any(byte[].class), eq("application/pdf")))
-          .thenThrow(
-              new BillAnalysisException(
-                  BillAnalysisException.ErrorCode.UNSUPPORTED_FORMAT,
-                  "PDF analysis is not yet supported"));
-
-      final MockMultipartFile file =
-          new MockMultipartFile("file", "invoice.pdf", "application/pdf", pdfBytes);
-
-      mockMvc
-          .perform(multipart("/api/bills/upload").file(file))
-          .andExpect(status().isUnsupportedMediaType())
-          .andExpect(jsonPath("$.code").value("UNSUPPORTED_FORMAT"));
-    }
-
-    @Test
     void shouldReturn503WhenAnalysisServiceUnavailable() throws Exception {
-      when(billAnalysisService.analyze(any(byte[].class), any()))
+      when(billAnalysisService.analyze(anyList(), any()))
           .thenThrow(
               new BillAnalysisException(
                   BillAnalysisException.ErrorCode.SERVICE_UNAVAILABLE,
@@ -181,6 +198,23 @@ class BillUploadIntegrationTest {
           .perform(get("/api/health"))
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.status").value("UP"));
+    }
+  }
+
+  private static byte[] createSimplePdf() throws IOException {
+    try (PDDocument document = new PDDocument()) {
+      final PDPage page = new PDPage(PDRectangle.A4);
+      document.addPage(page);
+      try (PDPageContentStream content = new PDPageContentStream(document, page)) {
+        content.beginText();
+        content.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 12);
+        content.newLineAtOffset(100, 700);
+        content.showText("Test Invoice");
+        content.endText();
+      }
+      final ByteArrayOutputStream output = new ByteArrayOutputStream();
+      document.save(output);
+      return output.toByteArray();
     }
   }
 }
