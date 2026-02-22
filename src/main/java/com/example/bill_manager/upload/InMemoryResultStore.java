@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class InMemoryResultStore implements BillResultStore {
 
+  // TODO: add eviction policy (TTL or max-size) to prevent unbounded growth under sustained traffic
   private final Map<UUID, BillAnalysisResponse> store = new ConcurrentHashMap<>();
 
   @Override
