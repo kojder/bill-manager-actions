@@ -90,7 +90,7 @@ class BillAnalysisResponseTest {
                     "Item A", new BigDecimal("1"), new BigDecimal("9.99"), new BigDecimal("9.99"))),
             new BigDecimal("9.99"),
             "PLN",
-            List.of("test")),
+            List.of(PurchaseCategory.OTHER)),
         Instant.parse("2026-02-06T14:30:00Z"));
   }
 }

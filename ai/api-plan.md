@@ -42,7 +42,7 @@ Upload a bill file and trigger automatic AI analysis.
     ],
     "totalAmount": 11.97,
     "currency": "PLN",
-    "categoryTags": ["grocery", "dairy", "bakery"]
+    "categoryTags": ["grocery"]
   },
   "analyzedAt": "2026-02-06T14:30:00"
 }
@@ -131,9 +131,11 @@ public record BillAnalysisResult(
     List<LineItem> items,
     BigDecimal totalAmount,
     String currency,
-    List<String> categoryTags
+    List<PurchaseCategory> categoryTags
 ) {}
 ```
+
+**PurchaseCategory enum values:** `grocery`, `electronics`, `restaurant`, `pharmacy`, `clothing`, `home_and_garden`, `transport`, `entertainment`, `services`, `other`
 
 ### LineItem
 

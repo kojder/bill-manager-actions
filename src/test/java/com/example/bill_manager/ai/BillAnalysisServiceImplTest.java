@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.example.bill_manager.config.GroqApiProperties;
+import com.example.bill_manager.dto.PurchaseCategory;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import java.util.Arrays;
@@ -189,7 +190,7 @@ class BillAnalysisServiceImplTest {
       assertThat(result.items().get(0).name()).isEqualTo("Milk");
       assertThat(result.totalAmount()).isEqualByComparingTo("3.49");
       assertThat(result.currency()).isEqualTo("PLN");
-      assertThat(result.categoryTags()).containsExactly("grocery");
+      assertThat(result.categoryTags()).containsExactly(PurchaseCategory.GROCERY);
     }
 
     @Test
