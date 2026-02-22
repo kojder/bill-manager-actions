@@ -238,9 +238,14 @@ jobs:
                - Path-Specific Rule Compliance (only for affected paths)
                - Suggested patches as unified diffs (if applicable)
                - Next Actions for the author
-            3. Also write a shorter summary to
+            3. STICKY COMMENT: After completing inline review and report, update the
+               PR sticky comment with a concise review summary using the
+               `mcp__github_comment__update_claude_comment` tool. Include:
+               verdict (approve/request changes), key findings count,
+               and a one-line summary per finding.
+               Also write the same summary to
                reports/pr-${{ github.event.pull_request.number }}-comment.md
-               (the action's sticky comment will post it automatically)
+               (for artifact archival)
 
             ## Inline Comment Rules
             - ONLY comment on lines that appear in `gh pr diff` output (lines with + or - prefix)
@@ -252,10 +257,11 @@ jobs:
             - Do NOT modify any source files — only write reports under reports/
             - Do NOT run build, test, or formatting commands
             - Do NOT push or commit changes
-            - Do NOT post PR comments manually — the action handles this via sticky comment
+            - Use `mcp__github_comment__update_claude_comment` to post the review summary
+              as a sticky comment — this is the ONLY way to update the PR comment
           claude_args: |
             --max-turns 30
-            --allowedTools "Glob,Grep,Read,mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Write"
+            --allowedTools "Glob,Grep,Read,mcp__github_inline_comment__create_inline_comment,mcp__github_comment__update_claude_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Write"
 
       - name: Token Usage Summary
         if: always() && steps.claude_review.outputs.execution_file
