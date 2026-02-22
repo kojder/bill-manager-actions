@@ -481,9 +481,9 @@
 
 ## Phase 5: UI
 
-### Task 16: Frontend Styling with Pico CSS
+### Task 16: Frontend Styling with Pico CSS ✅ COMPLETED
 
-**Status:** In progress
+**Status:** Merged to master (PR #18)
 
 **Description:** Modernize the `index.html` upload page using Pico CSS (classless CSS framework via CDN). Replace raw JSON result display with a structured, readable card layout showing merchant name, items table, total, and category tags.
 
@@ -514,11 +514,40 @@
 
 ---
 
+### Task 17: Custom File Input — English UI Labels
+
+**Status:** In progress
+
+**Description:** Replace browser-native file input (shows OS-locale text like "Wybierz plik" on Polish systems) with a custom wrapper that always displays English labels ("Choose file", "No file selected").
+
+**Scope:**
+- Modified: `src/main/resources/static/index.html` — custom file input with hidden native input, styled button, filename display
+- Modified: `ai/tasks.md` — this task entry
+
+**Claude review:** CLAUDE.md review section (global)
+
+**Expected review points:**
+- [ ] Native file input hidden, custom button triggers it
+- [ ] Selected filename displayed to user
+- [ ] Form submission still works correctly with hidden input
+- [ ] No JavaScript framework dependencies — vanilla JS only
+
+**Implementation notes:**
+- Native `<input type="file">` hidden via `hidden` attribute
+- "Choose file" `<button type="button" class="outline">` triggers `fileInput.click()`
+- `<span class="file-name">` displays selected filename or "No file selected"
+- `fileInput.change` event updates filename display
+- Zero backend changes — HTML/CSS/JS only
+
+**Size:** S
+
+---
+
 ## Claude Code Actions Review Mapping
 
 | CLAUDE.md review section | Tasks | Key review points |
 |--------------------------|-------|-------------------|
-| Global review scope | 2, 3, 5, 10, 11, 13, 14, 16 | Architecture, Records, REST conventions, workflow quality, CI security, UI |
+| Global review scope | 2, 3, 5, 10, 11, 13, 14, 16, 17 | Architecture, Records, REST conventions, workflow quality, CI security, UI |
 | Config Module rules | 4, 12 | Secrets, env separation, configurable URLs, Jira API secrets |
 | Upload Module rules | 6, 7, 8, 15 | MIME validation, size limits, path traversal, preprocessing, PDF conversion |
 | AI Module rules | 9, 15 | Timeout, retry, exponential backoff, structured output, multi-image |
