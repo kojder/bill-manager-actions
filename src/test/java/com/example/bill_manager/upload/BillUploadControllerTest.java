@@ -17,6 +17,7 @@ import com.example.bill_manager.ai.BillAnalysisService;
 import com.example.bill_manager.dto.BillAnalysisResponse;
 import com.example.bill_manager.dto.BillAnalysisResult;
 import com.example.bill_manager.dto.LineItem;
+import com.example.bill_manager.dto.PurchaseCategory;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -45,7 +46,7 @@ class BillUploadControllerTest {
           List.of(new LineItem("Milk", BigDecimal.ONE, new BigDecimal("3.49"), new BigDecimal("3.49"))),
           new BigDecimal("3.49"),
           "PLN",
-          List.of("grocery"));
+          List.of(PurchaseCategory.GROCERY));
   // spotless:on
 
   @Autowired private MockMvc mockMvc;

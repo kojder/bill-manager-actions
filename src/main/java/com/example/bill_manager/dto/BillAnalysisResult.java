@@ -13,4 +13,4 @@ public record BillAnalysisResult(
     @NotEmpty @Valid List<LineItem> items,
     @NotNull @PositiveOrZero BigDecimal totalAmount,
     @NotBlank String currency,
-    List<String> categoryTags) {}
+    List<PurchaseCategory> categoryTags) {}

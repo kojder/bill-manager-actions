@@ -23,14 +23,14 @@ class BillAnalysisResultTest {
                     "Bread", new BigDecimal("1"), new BigDecimal("4.99"), new BigDecimal("4.99"))),
             new BigDecimal("11.97"),
             "PLN",
-            List.of("grocery", "dairy", "bakery"));
+            List.of(PurchaseCategory.GROCERY, PurchaseCategory.OTHER, PurchaseCategory.OTHER));
 
     String json = objectMapper.writeValueAsString(result);
 
     assertThat(json).contains("\"merchantName\":\"Grocery Store\"");
     assertThat(json).contains("\"totalAmount\":11.97");
     assertThat(json).contains("\"currency\":\"PLN\"");
-    assertThat(json).contains("\"categoryTags\":[\"grocery\",\"dairy\",\"bakery\"]");
+    assertThat(json).contains("\"categoryTags\":[\"grocery\",\"other\",\"other\"]");
     assertThat(json).contains("\"items\":[");
   }
 
@@ -50,7 +50,7 @@ class BillAnalysisResultTest {
           ],
           "totalAmount": 6.98,
           "currency": "PLN",
-          "categoryTags": ["grocery", "dairy"]
+          "categoryTags": ["grocery", "electronics"]
         }
         """;
 
@@ -61,7 +61,8 @@ class BillAnalysisResultTest {
     assertThat(result.items().get(0).name()).isEqualTo("Milk 3.2%");
     assertThat(result.totalAmount()).isEqualByComparingTo(new BigDecimal("6.98"));
     assertThat(result.currency()).isEqualTo("PLN");
-    assertThat(result.categoryTags()).containsExactly("grocery", "dairy");
+    assertThat(result.categoryTags())
+        .containsExactly(PurchaseCategory.GROCERY, PurchaseCategory.ELECTRONICS);
   }
 
   @Test

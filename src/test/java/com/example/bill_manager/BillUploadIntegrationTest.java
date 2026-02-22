@@ -13,6 +13,7 @@ import com.example.bill_manager.ai.BillAnalysisException;
 import com.example.bill_manager.ai.BillAnalysisService;
 import com.example.bill_manager.dto.BillAnalysisResult;
 import com.example.bill_manager.dto.LineItem;
+import com.example.bill_manager.dto.PurchaseCategory;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -67,7 +68,7 @@ class BillUploadIntegrationTest {
                       "Mleko", BigDecimal.ONE, new BigDecimal("3.49"), new BigDecimal("3.49"))),
               new BigDecimal("3.49"),
               "PLN",
-              List.of("grocery"));
+              List.of(PurchaseCategory.GROCERY));
 
       when(billAnalysisService.analyze(anyList(), eq("image/jpeg"))).thenReturn(mockResult);
 
@@ -131,7 +132,7 @@ class BillUploadIntegrationTest {
                       new BigDecimal("100.00"))),
               new BigDecimal("100.00"),
               "PLN",
-              List.of("services"));
+              List.of(PurchaseCategory.SERVICES));
 
       when(billAnalysisService.analyze(anyList(), eq("image/jpeg"))).thenReturn(mockResult);
 

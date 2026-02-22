@@ -206,6 +206,10 @@ class ValidationTest {
 
   private static BillAnalysisResult createValidResult() {
     return new BillAnalysisResult(
-        "Store", List.of(createValidLineItem()), new BigDecimal("9.99"), "PLN", List.of("test"));
+        "Store",
+        List.of(createValidLineItem()),
+        new BigDecimal("9.99"),
+        "PLN",
+        List.of(PurchaseCategory.OTHER));
   }
 }

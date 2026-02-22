@@ -42,7 +42,22 @@ public class BillAnalysisServiceImpl implements BillAnalysisService {
       - All line items with name, quantity, unit price, and total price
       - The total amount
       - The currency (use ISO 4217 codes, e.g., PLN, EUR, USD). Default to PLN if unclear.
-      - Category tags describing the type of purchase (e.g., grocery, restaurant, electronics)
+      - One or more category tags from the allowed list below. \
+      Assign categories based on the purchased items, not the store name. \
+      An item may belong to multiple categories — assign all that apply.
+
+      Allowed categories:
+      - grocery: food, beverages, household cleaning supplies from supermarkets
+      - electronics: computers, phones, tech accessories, cables, electronic home appliances
+      - restaurant: dining, takeout, cafe, bar
+      - pharmacy: medicine, health products, supplements, cosmetics
+      - clothing: apparel, shoes, fashion accessories
+      - home_and_garden: home appliances, furniture, decor, garden supplies, \
+      air purifiers, humidifiers, vacuum cleaners
+      - transport: fuel, parking, tolls, public transport tickets
+      - entertainment: cinema, books, games, streaming subscriptions
+      - services: repairs, cleaning, professional services, subscriptions
+      - other: use only when no other category fits
 
       Be precise with numbers. Use decimal point notation (e.g., 3.49, not 3,49).
       If a field cannot be determined, provide a reasonable default or best guess.""";

@@ -543,13 +543,53 @@
 
 ---
 
+## Phase 6: AI Improvements
+
+### Task 18: Category Classification — PurchaseCategory Enum + Enhanced Prompt
+
+**Status:** In Progress
+
+**Description:** Fix inconsistent LLM category classification (e.g. Klarta humidifier tagged as "grocery" via PNG, "electronics" via PDF). Replace free-form `List<String> categoryTags` with `PurchaseCategory` enum and enhance system prompt with explicit category taxonomy.
+
+**Scope:**
+- New: `src/main/java/.../dto/PurchaseCategory.java` — enum with 10 categories, `@JsonValue`/`@JsonCreator`, fallback to OTHER
+- Modified: `src/main/java/.../dto/BillAnalysisResult.java` — `List<String>` → `List<PurchaseCategory>`
+- Modified: `src/main/java/.../ai/BillAnalysisServiceImpl.java` — enhanced `SYSTEM_PROMPT` with category taxonomy and multi-tag instruction
+- Modified: `ai/api-plan.md` — updated data model and response examples
+- New: `src/test/java/.../dto/PurchaseCategoryTest.java` — 10 tests (serialization, deserialization, edge cases)
+- Modified: 6 existing test files — updated to use `PurchaseCategory` enum values
+
+**Claude review:** **CLAUDE.md AI Module review rules** + CLAUDE.md review section (global)
+
+**Expected review points:**
+- [ ] Enum constrains LLM output via BeanOutputConverter JSON schema (`"enum": [...]`)
+- [ ] System prompt defines each category with examples, not just 3 vague hints
+- [ ] Multi-tag support: "An item may belong to multiple categories — assign all that apply"
+- [ ] Graceful degradation: `@JsonCreator` falls back to OTHER for unknown values
+- [ ] No breaking change in JSON API — `@JsonValue` serializes as lowercase strings
+
+**Implementation notes:**
+- Root cause: `BeanOutputConverter` generated `"type": "string"` for `List<String>` — no constraint on LLM output
+- Fix: enum produces `"enum": ["grocery", "electronics", ...]` in JSON schema — dual reinforcement (prompt + schema)
+- `@JsonValue` → lowercase serialization (`"grocery"`, not `"GROCERY"`)
+- `@JsonCreator` → case-insensitive parsing with fallback to `OTHER` (Groq doesn't enforce JSON Schema)
+- Category taxonomy: grocery, electronics, restaurant, pharmacy, clothing, home_and_garden, transport, entertainment, services, other
+- `home_and_garden` explicitly includes humidifiers, air purifiers, vacuum cleaners
+- `electronics` includes electronic home appliances — items can have both tags
+- Frontend (`index.html`): zero changes — `<kbd>` tags render enum displayNames identically
+- 161 total tests (10 new), 0 failures
+
+**Size:** M
+
+---
+
 ## Claude Code Actions Review Mapping
 
 | CLAUDE.md review section | Tasks | Key review points |
 |--------------------------|-------|-------------------|
-| Global review scope | 2, 3, 5, 10, 11, 13, 14, 16, 17 | Architecture, Records, REST conventions, workflow quality, CI security, UI |
+| Global review scope | 2, 3, 5, 10, 11, 13, 14, 16, 17, 18 | Architecture, Records, REST conventions, workflow quality, CI security, UI |
 | Config Module rules | 4, 12 | Secrets, env separation, configurable URLs, Jira API secrets |
 | Upload Module rules | 6, 7, 8, 15 | MIME validation, size limits, path traversal, preprocessing, PDF conversion |
-| AI Module rules | 9, 15 | Timeout, retry, exponential backoff, structured output, multi-image |
+| AI Module rules | 9, 15, 18 | Timeout, retry, exponential backoff, structured output, multi-image, category enum |
 
 **Coverage:** Each review rule set exercised in at least 1 PR.
