@@ -433,9 +433,9 @@
 
 ---
 
-### Task 15: PDF Support — PDF-to-Image Conversion Pipeline
+### Task 15: PDF Support — PDF-to-Image Conversion Pipeline ✅ COMPLETED
 
-**Status:** In progress (branch `feat/task-15-pdf-support`)
+**Status:** Merged to master (PR #14)
 
 **Description:** Enable PDF bill upload and analysis by converting PDF pages to JPEG images via Apache PDFBox, then sending them to the existing vision LLM (Llama 4 Scout on Groq). Single-model strategy — vision model handles both images and converted PDF pages.
 
@@ -514,9 +514,9 @@
 
 ---
 
-### Task 17: Custom File Input — English UI Labels
+### Task 17: Custom File Input — English UI Labels ✅ COMPLETED
 
-**Status:** In progress
+**Status:** Merged to master (PR #19)
 
 **Description:** Replace browser-native file input (shows OS-locale text like "Wybierz plik" on Polish systems) with a custom wrapper that always displays English labels ("Choose file", "No file selected").
 

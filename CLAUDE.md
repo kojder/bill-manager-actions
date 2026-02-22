@@ -158,6 +158,17 @@ For any complex, multi-step task:
    - Verify CLAUDE.md, wiki, and documentation consistency
    - Only then remove the task from `PROGRESS.md`
 
+### Pre-Commit Self-Review (Java changes)
+
+When committing changes to Java files, **before creating the commit**:
+
+1. Run `/spring-java-reviewer` to perform a self-review of the changed code
+2. Evaluate the findings — apply fixes that are sensible and align with project conventions
+3. Skip findings that are stylistic preferences or false positives
+4. Only then proceed with `git add` and `git commit`
+
+This ensures code quality issues are caught before CI review, reducing review round-trips.
+
 ## Code Conventions
 
 ### DTOs and Data Classes
@@ -344,9 +355,9 @@ Pipeline is defined in `.github/workflows/`:
 
 Claude Code Action validates that the workflow file invoking it must be identical on the PR branch and the default branch (master). This is a security feature preventing PRs from tampering with the review workflow.
 
-**Consequence:** PRs that modify `ci.yml` will always fail the `claude-review` job with: `Workflow validation failed. The workflow file must exist and have identical content to the version on the repository's default branch.`
+**Consequence:** PRs that modify `ci.yml` will trigger a workflow validation failure in the `claude-review` step. However, the step uses `continue-on-error: true`, so the **overall CI pipeline still passes**. A "Review Status" step writes an informational note to the Step Summary when this happens.
 
-**Workaround:** Merge such PRs with `gh pr merge <N> --squash --admin` (bypassing the failed check). After merge, subsequent PRs will pass because master now has the updated workflow. This limitation only affects PRs that directly modify workflow files — all other PRs are unaffected.
+**For PRs that modify `ci.yml`:** Push changes directly to master or merge the PR with `gh pr merge <N> --squash --admin`. After merge, subsequent PRs will pass because master now has the updated workflow.
 
 ## Related Repositories
 
