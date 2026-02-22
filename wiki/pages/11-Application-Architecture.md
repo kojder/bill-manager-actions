@@ -48,7 +48,7 @@ com.example.bill_manager/
 │   ├── HealthController.java        # GET /api/health (liveness probe)
 │   └── HealthResponse.java          # Simple Record
 │
-├── upload/                          # Upload, validation, preprocessing
+├── upload/                          # Upload, validation, preprocessing, PDF conversion
 │   ├── BillUploadController.java    # REST endpoints (POST upload, GET by id)
 │   ├── BillResultStore.java         # Interface for result storage
 │   ├── InMemoryResultStore.java     # @Component, ConcurrentHashMap implementation
@@ -57,7 +57,11 @@ com.example.bill_manager/
 │   ├── FileValidationException.java # Custom exception with ErrorCode enum
 │   ├── ImagePreprocessingService.java    # Interface
 │   ├── ImagePreprocessingServiceImpl.java # Resize, EXIF strip
-│   └── ImagePreprocessingException.java  # Custom exception with ErrorCode enum
+│   ├── ImagePreprocessingException.java  # Custom exception with ErrorCode enum
+│   ├── ImageWriteUtils.java         # Package-private JPEG/PNG write utility (DRY)
+│   ├── PdfConversionService.java    # Interface (PDF pages → JPEG images)
+│   ├── PdfConversionServiceImpl.java # Apache PDFBox page rendering
+│   └── PdfConversionException.java  # Custom exception with ErrorCode enum
 │
 ├── dto/                             # Data Transfer Objects (Java Records)
 │   ├── BillAnalysisResult.java      # LLM response: merchant, items, total
@@ -85,9 +89,12 @@ graph TD
     UI["index.html<br/><i>Upload form</i>"] --> UPLOAD
     UPLOAD["POST /api/bills/upload<br/><i>multipart/form-data</i>"] --> VALIDATE["FileValidationService.validateFile()"]
     VALIDATE -->|"Returns detected MIME type<br/>MIME by magic bytes<br/>Size check (10MB)"| SANITIZE["FileValidationService.sanitizeFilename()"]
-    SANITIZE --> PREPROCESS["ImagePreprocessingService"]
-    PREPROCESS -->|"Resize to 1200px<br/>Strip EXIF metadata<br/>PDF passthrough"| ANALYZE["BillAnalysisService"]
-    ANALYZE -->|"ChatClient + Groq API<br/>Timeout: 30s<br/>Retry: 3x exponential<br/>Structured output"| RESULT["BillAnalysisResult"]
+    SANITIZE --> BRANCH{"PDF?"}
+    BRANCH -->|"yes"| PDF_CONVERT["PdfConversionService<br/>PDFBox → JPEG pages"]
+    BRANCH -->|"no"| PREPROCESS
+    PDF_CONVERT --> PREPROCESS["ImagePreprocessingService<br/>Resize to 1200px, strip EXIF"]
+    PREPROCESS --> ANALYZE["BillAnalysisService"]
+    ANALYZE -->|"ChatClient + Groq API<br/>Timeout: 30s<br/>Retry: 3x exponential<br/>Multi-image (≤5 pages)"| RESULT["BillAnalysisResult"]
     RESULT --> STORE["InMemoryResultStore<br/><i>ConcurrentHashMap</i>"]
     STORE --> RESPONSE["BillAnalysisResponse<br/><i>201 Created</i>"]
 
@@ -123,12 +130,12 @@ All errors return a standardized `ErrorResponse`:
 
 | HTTP Code | Scenario |
 |-----------|----------|
-| 400 | Missing or empty file |
+| 400 | Missing or empty file, encrypted PDF, too many PDF pages |
 | 404 | Analysis result not found |
 | 413 | File exceeds 10MB limit |
-| 415 | Unsupported MIME type or format |
-| 422 | Image cannot be read or decoded |
-| 500 | Internal server error |
+| 415 | Unsupported MIME type |
+| 422 | Image cannot be read or decoded, PDF corrupted or empty |
+| 500 | Internal server error, PDF conversion failure |
 | 503 | Groq API unavailable (after retries) |
 
 ---
@@ -191,6 +198,8 @@ public record LineItem(
 | `groq.api.retry.multiplier` | `2.0` | Exponential backoff multiplier |
 | `upload.max-file-size-bytes` | `10485760` (10MB) | App-level file size limit |
 | `upload.allowed-mime-types` | `image/jpeg,image/png,application/pdf` | Allowed file types |
+| `upload.pdf-render-dpi` | `150` | DPI for PDF page rendering |
+| `upload.pdf-max-pages` | `5` | Maximum PDF pages to process |
 | `spring.servlet.multipart.max-file-size` | `11MB` | Servlet multipart limit (above app limit) |
 
 ### Development Profile (`application-dev.properties`)
@@ -214,6 +223,7 @@ public record LineItem(
 | Build | Maven (wrapper) | 3.9.12 |
 | Linting | Checkstyle (Google Style) | 10.23.1 |
 | Validation | Jakarta Bean Validation | — |
+| PDF Processing | Apache PDFBox | 3.0.4 |
 | Storage | ConcurrentHashMap (in-memory) | — |
 
 For detailed technology decisions, see `ai/tech-stack.md` in the repository.

@@ -4,14 +4,8 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.Iterator;
-import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
-import javax.imageio.stream.ImageOutputStream;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -19,7 +13,6 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
 
   private static final int MAX_WIDTH_PX = 1200;
   private static final float JPEG_QUALITY = 0.9f;
-  private static final String MIME_TYPE_PDF = "application/pdf";
   private static final String MIME_TYPE_JPEG = "image/jpeg";
   private static final String MIME_TYPE_PNG = "image/png";
 
@@ -32,10 +25,6 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
     if (mimeType == null) {
       throw new ImagePreprocessingException(
           ImagePreprocessingException.ErrorCode.IMAGE_READ_FAILED, "MIME type must not be null");
-    }
-
-    if (MIME_TYPE_PDF.equals(mimeType)) {
-      return fileContent;
     }
 
     final BufferedImage originalImage = readImage(fileContent);
@@ -110,47 +99,11 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
   }
 
   private byte[] writeJpeg(final BufferedImage image) {
-    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-      final Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
-      if (!writers.hasNext()) {
-        throw new ImagePreprocessingException(
-            ImagePreprocessingException.ErrorCode.PREPROCESSING_FAILED,
-            "No JPEG ImageWriter available in this JRE");
-      }
-      final ImageWriter writer = writers.next();
-      try (ImageOutputStream imageOutputStream = ImageIO.createImageOutputStream(outputStream)) {
-        final ImageWriteParam params = writer.getDefaultWriteParam();
-        params.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
-        params.setCompressionQuality(JPEG_QUALITY);
-        writer.setOutput(imageOutputStream);
-        writer.write(null, new IIOImage(image, null, null), params);
-      } finally {
-        writer.dispose();
-      }
-      return outputStream.toByteArray();
-    } catch (final IOException e) {
-      throw new ImagePreprocessingException(
-          ImagePreprocessingException.ErrorCode.PREPROCESSING_FAILED,
-          "Failed to write preprocessed JPEG image",
-          e);
-    }
+    return ImageWriteUtils.writeJpeg(image, JPEG_QUALITY);
   }
 
   private byte[] writePng(final BufferedImage image) {
-    try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-      final boolean written = ImageIO.write(image, "png", outputStream);
-      if (!written) {
-        throw new ImagePreprocessingException(
-            ImagePreprocessingException.ErrorCode.PREPROCESSING_FAILED,
-            "No PNG ImageWriter available in this JRE");
-      }
-      return outputStream.toByteArray();
-    } catch (final IOException e) {
-      throw new ImagePreprocessingException(
-          ImagePreprocessingException.ErrorCode.PREPROCESSING_FAILED,
-          "Failed to write preprocessed PNG image",
-          e);
-    }
+    return ImageWriteUtils.writePng(image);
   }
 
   private int resolveImageType(final String mimeType) {

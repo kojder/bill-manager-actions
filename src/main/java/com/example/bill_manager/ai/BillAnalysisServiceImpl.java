@@ -4,6 +4,7 @@ import com.example.bill_manager.config.GroqApiProperties;
 import com.example.bill_manager.dto.BillAnalysisResult;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -29,12 +30,14 @@ public class BillAnalysisServiceImpl implements BillAnalysisService {
   private static final Logger LOG = LoggerFactory.getLogger(BillAnalysisServiceImpl.class);
 
   private static final int MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
-  private static final String MIME_TYPE_PDF = "application/pdf";
+  private static final int MAX_IMAGES_PER_REQUEST = 5;
 
   // spotless:off
   private static final String SYSTEM_PROMPT = """
       You are a bill and receipt analysis assistant. Your task is to extract structured data \
-      from bill/receipt images. Analyze the image carefully and extract:
+      from bill/receipt images. If multiple images are provided, they represent pages of the \
+      same document — combine information from all pages into a single result. \
+      Analyze the image(s) carefully and extract:
       - The merchant/store name
       - All line items with name, quantity, unit price, and total price
       - The total amount
@@ -61,41 +64,48 @@ public class BillAnalysisServiceImpl implements BillAnalysisService {
   }
 
   @Override
-  public BillAnalysisResult analyze(final byte[] imageData, final String mimeType) {
-    validateInput(imageData, mimeType);
+  public BillAnalysisResult analyze(final List<byte[]> images, final String mimeType) {
+    validateInput(images, mimeType);
 
     final String formatInstructions = outputConverter.getFormat();
     final MimeType mediaMimeType = MimeType.valueOf(mimeType);
     final String userPromptText =
-        "Analyze this bill/receipt image and extract the structured data.\n\n" + formatInstructions;
+        "Analyze this bill/receipt and extract the structured data.\n\n" + formatInstructions;
 
-    final String responseText = executeWithRetry(userPromptText, mediaMimeType, imageData);
+    final String responseText = executeWithRetry(userPromptText, mediaMimeType, images);
     return parseAndValidateResponse(responseText);
   }
 
-  private void validateInput(final byte[] imageData, final String mimeType) {
-    if (imageData == null) {
+  private void validateInput(final List<byte[]> images, final String mimeType) {
+    if (images == null || images.isEmpty()) {
       throw new BillAnalysisException(
-          BillAnalysisException.ErrorCode.INVALID_INPUT, "Image data must not be null");
+          BillAnalysisException.ErrorCode.INVALID_INPUT, "Image data must not be null or empty");
     }
     if (mimeType == null) {
       throw new BillAnalysisException(
           BillAnalysisException.ErrorCode.INVALID_INPUT, "MIME type must not be null");
     }
-    if (MIME_TYPE_PDF.equals(mimeType)) {
+    if (images.size() > MAX_IMAGES_PER_REQUEST) {
       throw new BillAnalysisException(
-          BillAnalysisException.ErrorCode.UNSUPPORTED_FORMAT,
-          "PDF analysis is not yet supported. Please upload an image (JPEG or PNG).");
+          BillAnalysisException.ErrorCode.INVALID_INPUT,
+          "Too many images: " + images.size() + ", maximum allowed: " + MAX_IMAGES_PER_REQUEST);
     }
-    if (imageData.length > MAX_IMAGE_SIZE_BYTES) {
-      throw new BillAnalysisException(
-          BillAnalysisException.ErrorCode.PROMPT_TOO_LARGE,
-          "Image size exceeds maximum allowed for analysis: " + imageData.length + " bytes");
+    for (final byte[] image : images) {
+      if (image == null) {
+        throw new BillAnalysisException(
+            BillAnalysisException.ErrorCode.INVALID_INPUT,
+            "Image data must not contain null entries");
+      }
+      if (image.length > MAX_IMAGE_SIZE_BYTES) {
+        throw new BillAnalysisException(
+            BillAnalysisException.ErrorCode.PROMPT_TOO_LARGE,
+            "Image size exceeds maximum allowed for analysis: " + image.length + " bytes");
+      }
     }
   }
 
   private String executeWithRetry(
-      final String promptText, final MimeType mimeType, final byte[] imageData) {
+      final String promptText, final MimeType mimeType, final List<byte[]> images) {
     try {
       return retryTemplate.execute(
           (RetryCallback<String, Exception>)
@@ -103,10 +113,13 @@ public class BillAnalysisServiceImpl implements BillAnalysisService {
                 if (context.getRetryCount() > 0) {
                   LOG.warn("Retrying Groq API call, attempt {}", context.getRetryCount() + 1);
                 }
-                final Media media = Media.builder().mimeType(mimeType).data(imageData).build();
+                final Media[] mediaArray =
+                    images.stream()
+                        .map(img -> Media.builder().mimeType(mimeType).data(img).build())
+                        .toArray(Media[]::new);
                 return chatClient
                     .prompt()
-                    .user(u -> u.text(promptText).media(media))
+                    .user(u -> u.text(promptText).media(mediaArray))
                     .call()
                     .content();
               });

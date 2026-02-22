@@ -6,6 +6,7 @@ import com.example.bill_manager.dto.BillAnalysisResult;
 import com.example.bill_manager.exception.AnalysisNotFoundException;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,18 +22,24 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api/bills")
 public class BillUploadController {
 
+  private static final String MIME_TYPE_PDF = "application/pdf";
+  private static final String MIME_TYPE_JPEG = "image/jpeg";
+
   private final FileValidationService fileValidationService;
   private final ImagePreprocessingService imagePreprocessingService;
+  private final PdfConversionService pdfConversionService;
   private final BillAnalysisService billAnalysisService;
   private final BillResultStore billResultStore;
 
   public BillUploadController(
       final FileValidationService fileValidationService,
       final ImagePreprocessingService imagePreprocessingService,
+      final PdfConversionService pdfConversionService,
       final BillAnalysisService billAnalysisService,
       final BillResultStore billResultStore) {
     this.fileValidationService = fileValidationService;
     this.imagePreprocessingService = imagePreprocessingService;
+    this.pdfConversionService = pdfConversionService;
     this.billAnalysisService = billAnalysisService;
     this.billResultStore = billResultStore;
   }
@@ -43,11 +50,27 @@ public class BillUploadController {
     final String detectedMimeType = fileValidationService.validateFile(file);
     final String sanitizedFilename =
         fileValidationService.sanitizeFilename(file.getOriginalFilename());
-
     final byte[] fileBytes = readFileBytes(file);
-    final byte[] processedBytes = imagePreprocessingService.preprocess(fileBytes, detectedMimeType);
+
+    final List<byte[]> processedImages;
+    final String analysisMimeType;
+
+    if (MIME_TYPE_PDF.equals(detectedMimeType)) {
+      final List<byte[]> pageImages = pdfConversionService.convertToImages(fileBytes);
+      processedImages =
+          pageImages.stream()
+              .map(img -> imagePreprocessingService.preprocess(img, MIME_TYPE_JPEG))
+              .toList();
+      analysisMimeType = MIME_TYPE_JPEG;
+    } else {
+      final byte[] processedBytes =
+          imagePreprocessingService.preprocess(fileBytes, detectedMimeType);
+      processedImages = List.of(processedBytes);
+      analysisMimeType = detectedMimeType;
+    }
+
     final BillAnalysisResult analysis =
-        billAnalysisService.analyze(processedBytes, detectedMimeType);
+        billAnalysisService.analyze(processedImages, analysisMimeType);
 
     final UUID id = UUID.randomUUID();
     final BillAnalysisResponse response =
@@ -67,7 +90,10 @@ public class BillUploadController {
     try {
       return file.getBytes();
     } catch (final IOException e) {
-      throw new RuntimeException("Failed to read uploaded file content after validation", e);
+      throw new FileValidationException(
+          FileValidationException.ErrorCode.FILE_UNREADABLE,
+          "Failed to read uploaded file content",
+          e);
     }
   }
 }

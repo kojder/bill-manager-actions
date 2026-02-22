@@ -14,7 +14,9 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 @TestPropertySource(
     properties = {
       "upload.max-file-size-bytes=5242880",
-      "upload.allowed-mime-types=image/jpeg,image/png"
+      "upload.allowed-mime-types=image/jpeg,image/png",
+      "upload.pdf-render-dpi=150",
+      "upload.pdf-max-pages=3"
     })
 class UploadPropertiesTest {
 
@@ -46,8 +48,16 @@ class UploadPropertiesTest {
   }
 
   @Test
+  void shouldLoadPdfProperties() {
+    assertThat(properties.pdfRenderDpi()).isEqualTo(150);
+    assertThat(properties.pdfMaxPages()).isEqualTo(3);
+  }
+
+  @Test
   void shouldValidateRequiredFields() {
     assertThat(properties.maxFileSizeBytes()).isPositive();
     assertThat(properties.allowedMimeTypes()).isNotEmpty();
+    assertThat(properties.pdfRenderDpi()).isBetween(72, 600);
+    assertThat(properties.pdfMaxPages()).isBetween(1, 5);
   }
 }
