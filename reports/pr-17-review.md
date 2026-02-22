@@ -1,16 +1,20 @@
 # Code Review Report — PR #17
 **feat(ui): style upload page with Pico CSS**
 **Author:** kojder | **Branch:** feat/task-16-frontend-styling → master
+**Review updated:** 2026-02-22 (re-review after synchronize push)
 
 ---
 
 ## Execution Plan
 
 Checked the following in order:
-1. `gh pr diff 17` — full unified diff of all 4 changed files
+1. `gh pr diff 17` — full unified diff of all changed files
 2. `CLAUDE.md` — global review scope, upload module rules, path-specific rules
 3. `src/main/resources/static/index.html` — full file read to confirm line numbers and full context
-4. `src/main/java/com/example/bill_manager/health/HealthController.java` — full file read to verify `@RequestMapping` base path and understand endpoint mapping
+4. `src/main/java/com/example/bill_manager/health/HealthController.java` — full file read to verify endpoint mapping
+
+### Re-review note (synchronize event)
+The `synchronize` push added `track_progress: true` to `ci.yml` and committed the prior review reports to `reports/`. No source code fixes were applied to the previously identified issues. The findings below remain open.
 
 ---
 
@@ -41,9 +45,12 @@ If the API returns a partial or malformed analysis object, `renderResult()` thro
 
 **Suggested fix:** Add guard at the top of `renderResult()`:
 ```js
-if (!a || !Array.isArray(a.items)) {
-  return renderError(0, { code: 'PARSE_ERROR', message: 'Unexpected response format from server.' });
-}
+function renderResult(data) {
+  const a = data.analysis;
+  if (!a || !Array.isArray(a.items)) {
+    return renderError(0, { code: 'PARSE_ERROR', message: 'Unexpected response format from server.' });
+  }
+  const itemsHtml = a.items.map(function(item) {
 ```
 
 ---
@@ -66,9 +73,10 @@ All other server-controlled fields in this function go through `escapeHtml()`. T
 ---
 
 ### [WARNING] Readiness probe unconditionally returns READY
-**File:** `src/main/java/com/example/bill_manager/health/HealthController.java` — line 20–22
+**File:** `src/main/java/com/example/bill_manager/health/HealthController.java` — lines 19–22
 
 ```java
+/** Readiness probe — confirms the application is ready to handle traffic. */
 @GetMapping("/health/ready")
 public ResponseEntity<HealthResponse> ready() {
   return ResponseEntity.ok(new HealthResponse("READY"));
@@ -77,7 +85,7 @@ public ResponseEntity<HealthResponse> ready() {
 
 This endpoint always returns HTTP 200 regardless of whether the application's dependencies (database, Groq API) are reachable. Container orchestrators rely on readiness probes to stop routing traffic when a service is degraded. An unconditional READY probe provides no benefit over the liveness probe.
 
-**Minimum acceptable fix:** Return HTTP `503` when critical dependencies are unavailable. For a simple placeholder, at least add a TODO comment documenting the limitation so the behaviour is intentional, not accidental.
+**Minimum acceptable fix:** Either implement a real dependency check, or add a TODO comment acknowledging the current probe is a placeholder only, so the behaviour is intentional.
 
 ---
 
@@ -103,12 +111,21 @@ This endpoint always returns HTTP 200 regardless of whether the application's de
 | Rule | Status |
 |------|--------|
 | No secrets/API keys in HTML/JS | ✅ Pass |
-| XSS escaping for user-visible data | ⚠️ Inconsistent (data.id, formatTimestamp) |
+| XSS escaping for user-visible data | ⚠️ Inconsistent — `data.id` and `formatTimestamp()` result unescaped |
 | Structured error responses, no raw server internals | ✅ Pass |
-| Null checks for API response fields | ⚠️ Missing on data.analysis / data.analysis.items |
+| Null checks for API response fields | ⚠️ Missing on `data.analysis` / `data.analysis.items` |
+| Versioned CDN dependency | ✅ Pass (`@2.0.6`) |
+| Semantic HTML | ✅ Pass |
+| Loading state and error display | ✅ Pass |
+| No JS framework dependencies | ✅ Pass — vanilla JS only |
 
 ### Upload Module (`**/upload/**`)
 Not applicable — this PR makes zero backend upload changes.
+
+---
+
+## CI Changes (`ci.yml`)
+Addition of `track_progress: true` is correct and intentional — enables the spinner in the sticky comment during agent mode review. No issues.
 
 ---
 
@@ -116,5 +133,5 @@ Not applicable — this PR makes zero backend upload changes.
 
 1. **Fix null-guard** on `data.analysis` and `data.analysis.items` in `renderResult()` (lines 54–55)
 2. **Wrap `data.id.substring(0, 8)`** with `escapeHtml()` (line 82)
-3. **Wrap `formatTimestamp()` result** with `escapeHtml()` (line 83) — nit, but completes the escaping pattern
-4. **Readiness probe** — either implement a real dependency check or add a TODO comment acknowledging the current probe is a placeholder only
+3. **Readiness probe** — implement dependency check or add TODO comment acknowledging placeholder (HealthController.java:20)
+4. **Wrap `formatTimestamp()` result** with `escapeHtml()` (line 83) — nit, completes the escaping pattern
