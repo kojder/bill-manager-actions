@@ -23,14 +23,17 @@ class BillAnalysisResultTest {
                     "Bread", new BigDecimal("1"), new BigDecimal("4.99"), new BigDecimal("4.99"))),
             new BigDecimal("11.97"),
             "PLN",
-            List.of(PurchaseCategory.GROCERY, PurchaseCategory.OTHER, PurchaseCategory.OTHER));
+            List.of(
+                PurchaseCategory.GROCERY,
+                PurchaseCategory.ELECTRONICS,
+                PurchaseCategory.RESTAURANT));
 
     String json = objectMapper.writeValueAsString(result);
 
     assertThat(json).contains("\"merchantName\":\"Grocery Store\"");
     assertThat(json).contains("\"totalAmount\":11.97");
     assertThat(json).contains("\"currency\":\"PLN\"");
-    assertThat(json).contains("\"categoryTags\":[\"grocery\",\"other\",\"other\"]");
+    assertThat(json).contains("\"categoryTags\":[\"grocery\",\"electronics\",\"restaurant\"]");
     assertThat(json).contains("\"items\":[");
   }
 
