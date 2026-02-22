@@ -14,4 +14,10 @@ public class HealthController {
   public ResponseEntity<HealthResponse> health() {
     return ResponseEntity.ok(new HealthResponse("UP"));
   }
+
+  /** Readiness probe — confirms the application is ready to handle traffic. */
+  @GetMapping("/health/ready")
+  public ResponseEntity<HealthResponse> ready() {
+    return ResponseEntity.ok(new HealthResponse("READY"));
+  }
 }
