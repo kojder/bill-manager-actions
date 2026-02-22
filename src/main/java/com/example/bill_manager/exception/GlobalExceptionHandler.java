@@ -5,6 +5,8 @@ import com.example.bill_manager.dto.ErrorResponse;
 import com.example.bill_manager.upload.FileValidationException;
 import com.example.bill_manager.upload.ImagePreprocessingException;
 import java.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -15,6 +17,8 @@ import org.springframework.web.multipart.support.MissingServletRequestPartExcept
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
   @ExceptionHandler(FileValidationException.class)
   public ResponseEntity<ErrorResponse> handleFileValidation(final FileValidationException ex) {
@@ -75,6 +79,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<ErrorResponse> handleGenericException(final Exception ex) {
+    LOG.error("Unhandled exception", ex);
     final ErrorResponse response =
         new ErrorResponse("INTERNAL_ERROR", "An unexpected error occurred", Instant.now());
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);

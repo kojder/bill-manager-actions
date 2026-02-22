@@ -95,10 +95,7 @@ class BillAnalysisServiceImplTest {
     when(requestSpec.call()).thenReturn(callResponseSpec);
 
     final GroqApiProperties properties =
-        new GroqApiProperties(
-            "https://api.groq.com/openai/v1",
-            "llama-3.2-11b-vision-preview",
-            new GroqApiProperties.RetryConfig(3, 1000L, 2.0));
+        new GroqApiProperties(new GroqApiProperties.RetryConfig(3, 1000L, 2.0));
 
     final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
     service = new BillAnalysisServiceImpl(chatClientBuilder, properties, validator);

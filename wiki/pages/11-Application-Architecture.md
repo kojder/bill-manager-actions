@@ -44,10 +44,15 @@ com.example.bill_manager/
 │   ├── BillAnalysisServiceImpl.java # ChatClient, structured output, retry
 │   └── BillAnalysisException.java   # Custom exception with ErrorCode enum
 │
+├── health/                          # Health check endpoint
+│   ├── HealthController.java        # GET /api/health (liveness probe)
+│   └── HealthResponse.java          # Simple Record
+│
 ├── upload/                          # Upload, validation, preprocessing
 │   ├── BillUploadController.java    # REST endpoints (POST upload, GET by id)
-│   ├── BillResultStore.java         # In-memory storage (ConcurrentHashMap)
-│   ├── FileValidationService.java   # Interface
+│   ├── BillResultStore.java         # Interface for result storage
+│   ├── InMemoryResultStore.java     # @Component, ConcurrentHashMap implementation
+│   ├── FileValidationService.java   # Interface (validateFile returns detected MIME)
 │   ├── FileValidationServiceImpl.java # MIME magic bytes, size, filename
 │   ├── FileValidationException.java # Custom exception with ErrorCode enum
 │   ├── ImagePreprocessingService.java    # Interface
@@ -61,7 +66,7 @@ com.example.bill_manager/
 │   └── ErrorResponse.java          # Error: code, message, timestamp
 │
 └── exception/                       # Global error handling
-    ├── GlobalExceptionHandler.java  # @ControllerAdvice for 9 exception types
+    ├── GlobalExceptionHandler.java  # @ControllerAdvice with SLF4J logging
     └── AnalysisNotFoundException.java
 ```
 
@@ -69,6 +74,7 @@ Each package maps to a path-specific review rule set in CLAUDE.md:
 - `config/` → Config Module rules (secrets, env separation)
 - `upload/` → Upload Module rules (MIME validation, path traversal)
 - `ai/` → AI Module rules (timeout, retry, structured output)
+- `health/` → no path-specific rules (simple liveness probe)
 
 ---
 
@@ -76,16 +82,20 @@ Each package maps to a path-specific review rule set in CLAUDE.md:
 
 ```mermaid
 graph TD
-    UPLOAD["POST /api/bills/upload<br/><i>multipart/form-data</i>"] --> VALIDATE["FileValidationService"]
-    VALIDATE -->|"MIME by magic bytes<br/>Size check (10MB)<br/>Filename sanitization"| PREPROCESS["ImagePreprocessingService"]
+    UI["index.html<br/><i>Upload form</i>"] --> UPLOAD
+    UPLOAD["POST /api/bills/upload<br/><i>multipart/form-data</i>"] --> VALIDATE["FileValidationService.validateFile()"]
+    VALIDATE -->|"Returns detected MIME type<br/>MIME by magic bytes<br/>Size check (10MB)"| SANITIZE["FileValidationService.sanitizeFilename()"]
+    SANITIZE --> PREPROCESS["ImagePreprocessingService"]
     PREPROCESS -->|"Resize to 1200px<br/>Strip EXIF metadata<br/>PDF passthrough"| ANALYZE["BillAnalysisService"]
     ANALYZE -->|"ChatClient + Groq API<br/>Timeout: 30s<br/>Retry: 3x exponential<br/>Structured output"| RESULT["BillAnalysisResult"]
-    RESULT --> STORE["BillResultStore<br/><i>ConcurrentHashMap</i>"]
+    RESULT --> STORE["InMemoryResultStore<br/><i>ConcurrentHashMap</i>"]
     STORE --> RESPONSE["BillAnalysisResponse<br/><i>201 Created</i>"]
 
     RETRIEVE["GET /api/bills/{id}"] --> STORE
     STORE -->|"found"| OK["200 OK"]
     STORE -->|"not found"| NOT_FOUND["404 Not Found"]
+
+    HEALTH["GET /api/health"] --> HEALTH_OK["200 OK<br/><i>Liveness probe</i>"]
 ```
 
 ---
@@ -96,6 +106,8 @@ graph TD
 |----------|--------|-------------|----------|
 | `/api/bills/upload` | POST | Upload bill file, trigger AI analysis | 201 Created |
 | `/api/bills/{id}` | GET | Retrieve analysis result by UUID | 200 OK / 404 |
+| `/api/health` | GET | Liveness probe (application running) | 200 OK |
+| `/` | GET | Upload form (static HTML) | 200 OK |
 
 ### Error Responses
 
@@ -168,8 +180,8 @@ public record LineItem(
 | Property | Default Value | Description |
 |----------|--------------|-------------|
 | `spring.ai.openai.api-key` | `${GROQ_API_KEY}` | Groq API key (from env var) |
-| `spring.ai.openai.base-url` | `https://api.groq.com/openai/v1` | Groq endpoint |
-| `spring.ai.openai.chat.options.model` | `llama-3.2-11b-vision-preview` | Vision LLM model |
+| `spring.ai.openai.base-url` | `https://api.groq.com/openai` | Groq endpoint (Spring AI appends `/v1`) |
+| `spring.ai.openai.chat.options.model` | `meta-llama/llama-4-scout-17b-16e-instruct` | Vision LLM model |
 | `spring.ai.openai.chat.options.temperature` | `0.3` | Low temp for deterministic analysis |
 | `spring.ai.openai.chat.options.max-tokens` | `2048` | Response token limit |
 | `spring.http.client.connect-timeout` | `5s` | HTTP connect timeout |
@@ -216,6 +228,6 @@ For detailed technology decisions, see `ai/tech-stack.md` in the repository.
 
 ---
 
-*Last updated: 2026-02-20*
+*Last updated: 2026-02-22*
 
 *Sources: `ai/tech-stack.md`, `ai/api-plan.md`, `ai/prd.md`, source code tree*

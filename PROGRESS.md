@@ -7,29 +7,7 @@ Read at the start of every conversation (referenced from CLAUDE.md).
 
 ## Current Task
 
-### [W-2] Create spring-boot-implementer Claude Code Skill
-**Source:** ad-hoc
-**Status:** In Progress
-
-#### Steps
-- [x] Scaffold skill with init_skill.py
-- [x] Remove scaffolded example files
-- [x] Write references/dto-exception.md
-- [x] Write references/service.md
-- [x] Write references/controller.md
-- [x] Write references/config.md
-- [x] Write references/testing.md
-- [x] Write references/spring-ai.md
-- [x] Write SKILL.md (frontmatter + body)
-- [x] Verify skill structure
-- [x] Commit
-
-#### Notes
-- Implementation guide skill (complements spring-java-reviewer for code review)
-- Copy-paste-ready templates with `// TODO:` markers, not checklists
-- Three-layer architecture: CLAUDE.md (conventions) → reviewer (verification) → implementer (writing)
-- 6 reference files by component type for granular context loading
-- All content in English
+_No active task._
 
 <!-- Template for adding a new task:
 

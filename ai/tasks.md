@@ -288,24 +288,40 @@
 
 ---
 
-### Task 10: End-to-End Integration + Simple UI
+### Task 10: End-to-End Integration + Simple UI ✅ COMPLETED
+
+**Status:** PR #12 (branch `feat/task-10-integration`)
 
 **Description:** Connect the entire flow: upload → validation → preprocessing → AI analysis → result. In-memory storage, health endpoint, simple HTML upload form.
 
 **Scope:**
-- Modified: `BillUploadController.java` — orchestrate full flow
-- New: `src/main/java/.../upload/InMemoryResultStore.java` — ConcurrentHashMap storage
-- New: `src/main/resources/static/index.html` — simple upload form (no framework, served by Spring Boot)
-- New: health endpoint (`GET /api/health`)
-- Tests: integration test of the full flow with mocked Groq API
+- Modified: `BillUploadController.java` — orchestrate full flow (4 services: FileValidation, ImagePreprocessing, BillAnalysis, BillResultStore)
+- Modified: `FileValidationService.java` — `validateFile()` returns detected MIME type (magic bytes, eliminates double detection)
+- Modified: `BillResultStore.java` — refactored from `@Component` class to interface (SOLID DIP)
+- New: `src/main/java/.../upload/InMemoryResultStore.java` — `@Component`, implements `BillResultStore`, ConcurrentHashMap storage
+- New: `src/main/java/.../health/HealthController.java` — `GET /api/health` → `{"status":"UP"}`
+- New: `src/main/java/.../health/HealthResponse.java` — simple Record
+- New: `src/main/resources/static/index.html` — simple upload form (vanilla JS fetch, no framework)
+- Modified: `BillUploadControllerTest.java` — added mocks for `ImagePreprocessingService` and `BillAnalysisService`, updated assertions
+- New: `InMemoryResultStoreTest.java` — 3 tests (save/retrieve, unknown ID, overwrite)
+- New: `BillUploadIntegrationTest.java` — 7 tests (`@SpringBootTest` + `@AutoConfigureMockMvc`, mocked `BillAnalysisService` only)
 
 **Claude review:** CLAUDE.md review section (global) + potentially AI Module and Upload Module review rules
 
 **Expected review points:**
-- [ ] Correct component orchestration
-- [ ] Thread-safe storage (ConcurrentHashMap)
-- [ ] Temporary resource cleanup
-- [ ] Integration test covers happy path and error paths
+- [x] Correct component orchestration
+- [x] Thread-safe storage (ConcurrentHashMap)
+- [x] Temporary resource cleanup
+- [x] Integration test covers happy path and error paths
+
+**Implementation notes:**
+- Synchronous pipeline: validateFile (returns MIME) → sanitize filename → read bytes → preprocess → AI analyze → store → return 201
+- `FileValidationService.validateFile()` returns detected MIME type — single magic bytes read, no double detection (DRY)
+- `BillResultStore` refactored to interface; `InMemoryResultStore` is the `@Component` implementation — Mockito `@MockitoBean` works unchanged with interfaces
+- PDF flow: passes validation (allowed MIME) → preprocessing passthrough → `BillAnalysisService` throws `UNSUPPORTED_FORMAT` (415) — no special controller logic
+- `HealthController` at `/api/health` coexists with Spring Boot Actuator at `/actuator/health`
+- Integration test creates real JPEG via `BufferedImage + ImageIO.write("jpg")` — proper magic bytes for `FileValidationService`
+- 117 total tests (7 new), 0 failures
 
 **Size:** L
 
