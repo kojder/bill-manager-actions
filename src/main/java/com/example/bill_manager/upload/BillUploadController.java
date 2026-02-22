@@ -67,10 +67,7 @@ public class BillUploadController {
     try {
       return file.getBytes();
     } catch (final IOException e) {
-      throw new FileValidationException(
-          FileValidationException.ErrorCode.FILE_UNREADABLE,
-          "Failed to read uploaded file content",
-          e);
+      throw new RuntimeException("Failed to read uploaded file content after validation", e);
     }
   }
 }

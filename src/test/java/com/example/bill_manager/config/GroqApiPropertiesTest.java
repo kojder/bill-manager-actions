@@ -13,8 +13,6 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 @EnableConfigurationProperties(GroqApiProperties.class)
 @TestPropertySource(
     properties = {
-      "groq.api.base-url=https://test.groq.com/api",
-      "groq.api.model=test-model",
       "groq.api.retry.max-attempts=5",
       "groq.api.retry.initial-delay-ms=2000",
       "groq.api.retry.multiplier=3.0"
@@ -24,14 +22,8 @@ class GroqApiPropertiesTest {
   @Autowired private GroqApiProperties properties;
 
   @Test
-  void shouldLoadGroqApiProperties() {
-    assertThat(properties).isNotNull();
-    assertThat(properties.baseUrl()).isEqualTo("https://test.groq.com/api");
-    assertThat(properties.model()).isEqualTo("test-model");
-  }
-
-  @Test
   void shouldLoadRetryConfiguration() {
+    assertThat(properties).isNotNull();
     assertThat(properties.retry()).isNotNull();
     assertThat(properties.retry().maxAttempts()).isEqualTo(5);
     assertThat(properties.retry().initialDelayMs()).isEqualTo(2000L);
@@ -40,8 +32,6 @@ class GroqApiPropertiesTest {
 
   @Test
   void shouldValidateRequiredFields() {
-    assertThat(properties.baseUrl()).isNotBlank();
-    assertThat(properties.model()).isNotBlank();
     assertThat(properties.retry().maxAttempts()).isPositive();
     assertThat(properties.retry().initialDelayMs()).isPositive();
     assertThat(properties.retry().multiplier()).isPositive();

@@ -1,7 +1,6 @@
 package com.example.bill_manager.config;
 
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -10,10 +9,6 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 // spotless:off
 public record GroqApiProperties(
-    @NotBlank(message = "Base URL must not be blank")
-    String baseUrl,
-    @NotBlank(message = "Model name must not be blank")
-    String model,
     @NotNull(message = "Retry configuration must not be null")
     RetryConfig retry) {
 
