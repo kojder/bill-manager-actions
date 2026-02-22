@@ -200,7 +200,6 @@ jobs:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           allowed_bots: "claude[bot],github-actions[bot]"
           use_sticky_comment: true
-          track_progress: true
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
@@ -210,7 +209,6 @@ jobs:
             ## Token Budget Rules
             - Use `gh pr diff` as your PRIMARY source of changes
             - Use `Read` tool for file contents — NEVER use `gh api` to read files
-            - Use `Write` tool to create report files — it auto-creates directories, no `mkdir` needed
             - You MAY read related files (interfaces, parent classes, callers, test counterparts)
               when needed to verify correctness — keep it targeted (max 5 extra file reads)
             - Use `Grep`/`Glob` to find related code (e.g., who calls a changed method, where
@@ -231,38 +229,25 @@ jobs:
 
             ## Review Workflow
             1. INLINE REVIEW: Post inline comments for specific code issues found in the diff
-            2. STRUCTURED REPORT: Write a markdown report to
-               reports/pr-${{ github.event.pull_request.number }}-review.md with:
-               - Execution Plan (what you checked and why)
-               - Summary and Strengths
-               - Risks / Potential Bugs
-               - Path-Specific Rule Compliance (only for affected paths)
-               - Suggested patches as unified diffs (if applicable)
-               - Next Actions for the author
-            3. STICKY COMMENT: After completing inline review and report, update the
-               PR sticky comment with a concise review summary using the
-               `mcp__github_comment__update_claude_comment` tool. Include:
+            2. SUMMARY COMMENT: After completing inline review, post a PR comment using
+               `gh pr comment` with a concise review summary including:
                verdict (approve/request changes), key findings count,
-               and a one-line summary per finding.
-               Also write the same summary to
-               reports/pr-${{ github.event.pull_request.number }}-comment.md
-               (for artifact archival)
+               and a one-line summary per finding
 
             ## Inline Comment Rules
             - ONLY comment on lines that appear in `gh pr diff` output (lines with + or - prefix)
             - Use line numbers from the NEW file version (right side of the diff)
             - NEVER use line numbers obtained from `Read` tool — they may differ from diff context
-            - If a finding relates to an unchanged line, mention it in the report instead
+            - If a finding relates to an unchanged line, mention it in the summary comment instead
 
             ## Safety
-            - Do NOT modify any source files — only write reports under reports/
+            - Do NOT modify any source files
+            - Do NOT create or write any files
             - Do NOT run build, test, or formatting commands
             - Do NOT push or commit changes
-            - Use `mcp__github_comment__update_claude_comment` to post the review summary
-              as a sticky comment — this is the ONLY way to update the PR comment
           claude_args: |
             --max-turns 30
-            --allowedTools "Glob,Grep,Read,mcp__github_inline_comment__create_inline_comment,mcp__github_comment__update_claude_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Write"
+            --allowedTools "Glob,Grep,Read,mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*)"
 
       - name: Token Usage Summary
         if: always() && steps.claude_review.outputs.execution_file
@@ -342,11 +327,11 @@ jobs:
 
           echo "✅ Token usage summary written to Step Summary and reports/pr-${PR_NUM}-usage.json"
 
-      - name: Upload review report
+      - name: Upload usage metrics
         if: always() && (hashFiles('reports/**') != '')
         uses: actions/upload-artifact@v4
         with:
-          name: claude-review-report-pr-${{ github.event.pull_request.number }}
+          name: claude-review-usage-pr-${{ github.event.pull_request.number }}
           path: reports/**
 
   cleanup-label:
