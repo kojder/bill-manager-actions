@@ -478,11 +478,46 @@
 
 ---
 
+## Phase 5: UI
+
+### Task 16: Frontend Styling with Pico CSS
+
+**Status:** In progress
+
+**Description:** Modernize the `index.html` upload page using Pico CSS (classless CSS framework via CDN). Replace raw JSON result display with a structured, readable card layout showing merchant name, items table, total, and category tags.
+
+**Scope:**
+- Modified: `src/main/resources/static/index.html` — Pico CSS CDN, semantic HTML restructure, formatted result display
+- Modified: `ai/tasks.md` — this task entry
+
+**Claude review:** CLAUDE.md review section (global)
+
+**Expected review points:**
+- [ ] CDN link uses versioned URL (not `@latest`)
+- [ ] Semantic HTML (`<main>`, `<article>`, `<table>`)
+- [ ] No raw JSON exposed to user — structured result card
+- [ ] Loading state and error display handled properly
+- [ ] No JavaScript framework dependencies — vanilla JS only
+
+**Implementation notes:**
+- Pico CSS v2 via jsDelivr CDN (~13KB, classless)
+- `<main class="container">` for responsive layout
+- `<article>` cards for result and error display
+- `<table>` for line items with proper `<thead>`/`<tbody>`
+- Pico's built-in `aria-busy="true"` for loading spinner on submit button
+- Category tags rendered as `<kbd>` elements
+- Formatted timestamp and truncated UUID in footer
+- Zero backend changes — HTML/CSS/JS only
+
+**Size:** S
+
+---
+
 ## Claude Code Actions Review Mapping
 
 | CLAUDE.md review section | Tasks | Key review points |
 |--------------------------|-------|-------------------|
-| Global review scope | 2, 3, 5, 10, 11, 13, 14 | Architecture, Records, REST conventions, workflow quality, CI security |
+| Global review scope | 2, 3, 5, 10, 11, 13, 14, 16 | Architecture, Records, REST conventions, workflow quality, CI security, UI |
 | Config Module rules | 4, 12 | Secrets, env separation, configurable URLs, Jira API secrets |
 | Upload Module rules | 6, 7, 8, 15 | MIME validation, size limits, path traversal, preprocessing, PDF conversion |
 | AI Module rules | 9, 15 | Timeout, retry, exponential backoff, structured output, multi-image |
