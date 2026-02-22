@@ -243,12 +243,13 @@ For the full Checkstyle configuration, see [Checkstyle Configuration](10-Checkst
 
 ### Job 4: claude-review
 
-**Purpose:** Automated AI code review with structured reporting.
+**Purpose:** Automated AI code review with structured reporting and token usage tracking.
 
 **Steps:**
 1. **Checkout** with full history (`fetch-depth: 0`) for comprehensive diff analysis
 2. **Claude Code Action** — Invokes `anthropics/claude-code-action@v1` with a detailed prompt
-3. **Upload report** — Saves the structured review report as a GitHub Actions artifact
+3. **Token Usage Summary** — Parses the execution output file, sums token usage across all turns, writes a summary table to GitHub Step Summary and saves metrics as `reports/pr-{N}-usage.json`
+4. **Upload report** — Saves the structured review report and token usage metrics as a GitHub Actions artifact
 
 **Key configuration:**
 - Allowed tools: `Glob`, `Grep`, `Read`, inline comments, `gh pr` commands, `Write` (for reports)
@@ -257,6 +258,18 @@ For the full Checkstyle configuration, see [Checkstyle Configuration](10-Checkst
 - `--max-turns 20` limits token consumption per review
 - `use_sticky_comment: true` — edits a single comment instead of posting new ones on each push
 - Uses `CLAUDE_CODE_OAUTH_TOKEN` secret for authentication
+
+**Token usage metrics** (visible in GitHub Actions Step Summary after each review):
+
+| Metric | Description |
+|--------|-------------|
+| Input tokens | Total input tokens across all turns (e.g., `72.22k`) |
+| Output tokens | Total output tokens across all turns |
+| Cache creation | Tokens used for prompt cache creation |
+| Cache read | Tokens read from prompt cache |
+| Turns | Number of agentic conversation turns |
+| Duration | Wall-clock time of the review |
+| Est. cost | Estimated cost in USD (informational only) |
 
 For the full review prompt and report format, see [Claude Code Review Job](05-Claude-Code-Review-Job).
 
@@ -321,6 +334,6 @@ Claude Code Action validates that `ci.yml` on the PR branch matches the version 
 
 ---
 
-*Last updated: 2026-02-20*
+*Last updated: 2026-02-22*
 
 *Sources: `.github/workflows/ci.yml` (complete file), `CLAUDE.md` (pipeline diagram)*

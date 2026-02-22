@@ -11,6 +11,7 @@
 - [Review Workflow](#review-workflow)
 - [Structured Report Format](#structured-report-format)
 - [Task Context: How PR Description Feeds the Review](#task-context-how-pr-description-feeds-the-review)
+- [Token Usage Tracking](#token-usage-tracking)
 - [Artifact Upload and Download](#artifact-upload-and-download)
 - [Tool Restrictions](#tool-restrictions)
 - [Related Pages](#related-pages)
@@ -229,13 +230,63 @@ Claude uses this as a **review checklist** — it knows what the PR is supposed 
 
 ---
 
+## Token Usage Tracking
+
+After the review step finishes (regardless of success or failure), a dedicated step parses the Claude Code Action execution output and extracts summed token metrics across all conversation turns. This ensures token data is captured even when the review hits `error_max_turns` or other failures — precisely when cost visibility matters most.
+
+### Where to Find Token Usage
+
+1. **GitHub Step Summary** — visible directly on the Actions run page, shows a markdown table with all metrics
+2. **JSON artifact** — `reports/pr-{N}-usage.json` is included in the review artifact for programmatic comparison across PRs
+
+### Metrics Collected
+
+| Metric | Description | Format |
+|--------|-------------|--------|
+| Input tokens | Sum of `input_tokens` from all assistant turns | Human-readable (e.g., `72.22k`) |
+| Output tokens | Sum of `output_tokens` from all assistant turns | Human-readable (e.g., `1.54k`) |
+| Cache creation | Tokens used for prompt cache creation | Human-readable |
+| Cache read | Tokens read from existing prompt cache | Human-readable |
+| Turns | Number of agentic conversation turns | Integer |
+| Duration | Total review wall-clock time | `Xm Ys` format |
+| Est. cost | Estimated cost in USD (from `total_cost_usd`) | `$X.XX` |
+
+### JSON Artifact Format
+
+The `reports/pr-{N}-usage.json` file contains raw numeric values for programmatic analysis:
+
+```json
+{
+  "pr": 12,
+  "input_tokens": 72219,
+  "output_tokens": 1542,
+  "cache_creation_tokens": 45100,
+  "cache_read_tokens": 12300,
+  "num_turns": 25,
+  "duration_ms": 417053,
+  "total_cost_usd": 1.45
+}
+```
+
+### Historical Baseline
+
+Based on reviews from PR #7 through PR #12 (7 runs):
+
+| Metric | Average | Range |
+|--------|---------|-------|
+| Est. cost | ~$1.13 | $0.95–$1.45 |
+| Turns | ~25 | 19–30 |
+| Duration | ~5 min | 3m49s–6m57s |
+
+---
+
 ## Artifact Upload and Download
 
-After Claude writes the report, the CI pipeline uploads it as a GitHub Actions artifact:
+After Claude writes the report and token metrics are collected, the CI pipeline uploads everything as a GitHub Actions artifact:
 
 ```yaml
 - name: Upload review report
-  if: ${{ hashFiles('reports/**') != '' }}
+  if: always() && (hashFiles('reports/**') != '')
   uses: actions/upload-artifact@v4
   with:
     name: claude-review-report-pr-${{ github.event.pull_request.number }}
@@ -244,7 +295,8 @@ After Claude writes the report, the CI pipeline uploads it as a GitHub Actions a
 
 **Key details:**
 - Artifact is named `claude-review-report-pr-{N}` (e.g., `claude-review-report-pr-7`)
-- Only uploaded if `reports/` directory has files (conditional on `hashFiles`)
+- Contains both the review report (`pr-{N}-review.md`, `pr-{N}-comment.md`) and token metrics (`pr-{N}-usage.json`)
+- Only uploaded if `reports/` directory has files
 - Available for download from the GitHub Actions run summary page
 - Default retention: 90 days
 
@@ -302,6 +354,6 @@ For a full comparison of tool restrictions across all workflows, see [Security a
 
 ---
 
-*Last updated: 2026-02-20*
+*Last updated: 2026-02-22*
 
-*Sources: `.github/workflows/ci.yml` (lines 176–245), `CLAUDE.md` (Review Scope), `ai/tasks.md` (expected review points examples)*
+*Sources: `.github/workflows/ci.yml` (claude-review job), `CLAUDE.md` (Review Scope), `ai/tasks.md` (expected review points examples)*
