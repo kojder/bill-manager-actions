@@ -410,11 +410,33 @@
 
 ---
 
+### Task 14: Token Usage Tracking for Code Review
+
+**Description:** Add automatic token usage extraction and presentation for Claude Code Review runs. Display summed input/output/cache tokens in GitHub Step Summary and save metrics as JSON artifact for cross-PR comparison.
+
+**Scope:**
+- Modified: `.github/workflows/ci.yml` — new step "Token Usage Summary" after `claude-review`, parses `execution_file` output
+- Modified: `wiki/pages/03-CI-Pipeline-Deep-Dive.md` — new section about review metrics
+- Modified: `wiki/pages/05-Claude-Code-Review-Job.md` — token tracking output description
+
+**Claude review:** CLAUDE.md review section (global) — workflow quality, script correctness
+
+**Expected review points:**
+- [ ] Token metrics summed across all turns (not per-turn)
+- [ ] Readable format (e.g., `72.22k input` instead of raw numbers)
+- [ ] Metrics saved as `reports/pr-N-usage.json` for artifact persistence
+- [ ] Step Summary displays table with all key metrics
+- [ ] Graceful handling when `execution_file` is missing or malformed
+
+**Size:** S
+
+---
+
 ## Claude Code Actions Review Mapping
 
 | CLAUDE.md review section | Tasks | Key review points |
 |--------------------------|-------|-------------------|
-| Global review scope | 2, 3, 5, 10, 11, 13 | Architecture, Records, REST conventions, workflow quality, CI security |
+| Global review scope | 2, 3, 5, 10, 11, 13, 14 | Architecture, Records, REST conventions, workflow quality, CI security |
 | Config Module rules | 4, 12 | Secrets, env separation, configurable URLs, Jira API secrets |
 | Upload Module rules | 6, 7, 8 | MIME validation, size limits, path traversal, preprocessing |
 | AI Module rules | 9 | Timeout, retry, exponential backoff, structured output |

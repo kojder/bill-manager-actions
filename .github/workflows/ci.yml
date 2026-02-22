@@ -192,6 +192,7 @@ jobs:
           fetch-depth: 0
 
       - name: Claude Code Review
+        id: claude_review
         uses: anthropics/claude-code-action@v1
         env:
           GH_TOKEN: ${{ github.token }}
@@ -256,8 +257,86 @@ jobs:
             --max-turns 30
             --allowedTools "Glob,Grep,Read,mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Write"
 
+      - name: Token Usage Summary
+        if: always() && steps.claude_review.outputs.execution_file
+        env:
+          EXEC_FILE: ${{ steps.claude_review.outputs.execution_file }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+        run: |
+          if [ ! -f "$EXEC_FILE" ]; then
+            echo "⚠️ Execution file not found, skipping token usage summary"
+            exit 0
+          fi
+
+          METRICS=$(jq '
+            # Sum token usage from all assistant messages
+            [.[] | select(.type == "assistant") | .message.usage // empty] as $usages |
+            ($usages | map(.input_tokens // 0) | add // 0) as $input |
+            ($usages | map(.output_tokens // 0) | add // 0) as $output |
+            ($usages | map(.cache_creation_input_tokens // 0) | add // 0) as $cache_create |
+            ($usages | map(.cache_read_input_tokens // 0) | add // 0) as $cache_read |
+            # Get result summary from last element
+            (.[-1] | select(.type == "result")) as $result |
+            {
+              input_tokens: $input,
+              output_tokens: $output,
+              cache_creation_tokens: $cache_create,
+              cache_read_tokens: $cache_read,
+              num_turns: ($result.num_turns // 0),
+              duration_ms: ($result.duration_ms // 0),
+              total_cost_usd: ($result.total_cost_usd // 0)
+            }
+          ' "$EXEC_FILE")
+
+          if [ -z "$METRICS" ] || [ "$METRICS" = "null" ]; then
+            echo "⚠️ Could not parse token metrics from execution file"
+            exit 0
+          fi
+
+          INPUT=$(echo "$METRICS" | jq -r '.input_tokens')
+          OUTPUT=$(echo "$METRICS" | jq -r '.output_tokens')
+          CACHE_CREATE=$(echo "$METRICS" | jq -r '.cache_creation_tokens')
+          CACHE_READ=$(echo "$METRICS" | jq -r '.cache_read_tokens')
+          TURNS=$(echo "$METRICS" | jq -r '.num_turns')
+          DURATION_MS=$(echo "$METRICS" | jq -r '.duration_ms')
+          COST=$(echo "$METRICS" | jq -r '.total_cost_usd')
+
+          format_tokens() {
+            local val=$1
+            if [ "$val" -ge 1000000 ]; then
+              printf "%.2fM" "$(echo "scale=2; $val / 1000000" | bc)"
+            elif [ "$val" -ge 1000 ]; then
+              printf "%.2fk" "$(echo "scale=2; $val / 1000" | bc)"
+            else
+              echo "$val"
+            fi
+          }
+
+          DURATION_SEC=$((DURATION_MS / 1000))
+          DURATION_FMT="$((DURATION_SEC / 60))m $((DURATION_SEC % 60))s"
+
+          {
+            echo "## Claude Code Review — Token Usage"
+            echo ""
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| Input tokens | $(format_tokens "$INPUT") |"
+            echo "| Output tokens | $(format_tokens "$OUTPUT") |"
+            echo "| Cache creation | $(format_tokens "$CACHE_CREATE") |"
+            echo "| Cache read | $(format_tokens "$CACHE_READ") |"
+            echo "| Turns | $TURNS |"
+            echo "| Duration | $DURATION_FMT |"
+            printf "| Est. cost | \$%.2f |\n" "$COST"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          mkdir -p reports
+          echo "$METRICS" | jq --argjson pr "$PR_NUM" '. + {pr: $pr}' \
+            > "reports/pr-${PR_NUM}-usage.json"
+
+          echo "✅ Token usage summary written to Step Summary and reports/pr-${PR_NUM}-usage.json"
+
       - name: Upload review report
-        if: ${{ hashFiles('reports/**') != '' }}
+        if: always() && (hashFiles('reports/**') != '')
         uses: actions/upload-artifact@v4
         with:
           name: claude-review-report-pr-${{ github.event.pull_request.number }}
