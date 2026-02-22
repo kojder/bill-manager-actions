@@ -290,13 +290,13 @@
 
 ### Task 10: End-to-End Integration + Simple UI ✅ COMPLETED
 
-**Status:** Merged to master (PR #TBD)
+**Status:** PR #12 (branch `feat/task-10-integration`)
 
 **Description:** Connect the entire flow: upload → validation → preprocessing → AI analysis → result. In-memory storage, health endpoint, simple HTML upload form.
 
 **Scope:**
 - Modified: `BillUploadController.java` — orchestrate full flow (4 services: FileValidation, ImagePreprocessing, BillAnalysis, BillResultStore)
-- Modified: `FileValidationService.java` — added `detectMimeType(MultipartFile)` method (magic bytes detection, not Content-Type header)
+- Modified: `FileValidationService.java` — `validateFile()` returns detected MIME type (magic bytes, eliminates double detection)
 - Modified: `BillResultStore.java` — refactored from `@Component` class to interface (SOLID DIP)
 - New: `src/main/java/.../upload/InMemoryResultStore.java` — `@Component`, implements `BillResultStore`, ConcurrentHashMap storage
 - New: `src/main/java/.../health/HealthController.java` — `GET /api/health` → `{"status":"UP"}`
@@ -315,8 +315,8 @@
 - [x] Integration test covers happy path and error paths
 
 **Implementation notes:**
-- Synchronous pipeline: validate → detect MIME (magic bytes) → sanitize filename → read bytes → preprocess → AI analyze → store → return 201
-- `FileValidationService.detectMimeType()` exposes magic bytes detection for the controller — avoids unsafe `getContentType()` header reliance
+- Synchronous pipeline: validateFile (returns MIME) → sanitize filename → read bytes → preprocess → AI analyze → store → return 201
+- `FileValidationService.validateFile()` returns detected MIME type — single magic bytes read, no double detection (DRY)
 - `BillResultStore` refactored to interface; `InMemoryResultStore` is the `@Component` implementation — Mockito `@MockitoBean` works unchanged with interfaces
 - PDF flow: passes validation (allowed MIME) → preprocessing passthrough → `BillAnalysisService` throws `UNSUPPORTED_FORMAT` (415) — no special controller logic
 - `HealthController` at `/api/health` coexists with Spring Boot Actuator at `/actuator/health`

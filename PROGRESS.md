@@ -7,28 +7,7 @@ Read at the start of every conversation (referenced from CLAUDE.md).
 
 ## Current Task
 
-### [W-3] Task 10: End-to-End Integration + Simple UI
-**Source:** tasks.md Task 10
-**Branch:** `feat/task-10-integration`
-**Status:** Review
-
-#### Steps
-- [x] Add `detectMimeType` to `FileValidationService` interface + impl
-- [x] Refactor `BillResultStore` → interface + `InMemoryResultStore`
-- [x] Wire full pipeline in `BillUploadController` (4 services)
-- [x] Create `HealthController` + `HealthResponse`
-- [x] Create `index.html` upload form
-- [x] Update `BillUploadControllerTest` (unit tests)
-- [x] Create `InMemoryResultStoreTest`
-- [x] Create `BillUploadIntegrationTest`
-- [x] Run formatters, checkstyle, tests (117 tests, 0 failures)
-- [x] Update documentation (tasks.md)
-
-#### Notes
-- Synchronous pipeline: upload → validate → detect MIME → preprocess → AI analyze → store → return
-- `BillResultStore` class → interface + `InMemoryResultStore` (SOLID DIP)
-- Custom `/api/health` endpoint (separate from Actuator `/actuator/health`)
-- Mock only `BillAnalysisService` in integration tests (real validation + preprocessing)
+_No active task._
 
 <!-- Template for adding a new task:
 
