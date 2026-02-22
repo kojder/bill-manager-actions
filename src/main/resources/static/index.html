@@ -1,67 +1,133 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bill Manager</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2.0.6/css/pico.min.css">
   <style>
-    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; }
-    h1 { margin-bottom: 0.25rem; }
-    p { color: #555; }
-    #result { margin-top: 1.5rem; white-space: pre-wrap; background: #f4f4f4; padding: 1rem; border-radius: 4px; display: none; font-size: 0.85rem; }
-    #error { color: #c00; margin-top: 1rem; display: none; }
-    #loading { margin-top: 1rem; display: none; color: #666; }
-    button { margin-top: 0.5rem; padding: 0.5rem 1.5rem; cursor: pointer; }
-    button:disabled { cursor: not-allowed; opacity: 0.6; }
+    .result-header { margin-bottom: 0; }
+    .merchant { margin: 0.5rem 0 1rem; color: var(--pico-muted-color); }
+    .summary { display: flex; justify-content: space-between; align-items: baseline; margin-top: 1rem; }
+    .total { font-size: 1.25rem; font-weight: 700; }
+    .tags { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+    .meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--pico-muted-color); }
+    table td:nth-child(2), table td:nth-child(3), table td:nth-child(4),
+    table th:nth-child(2), table th:nth-child(3), table th:nth-child(4) { text-align: right; }
+    #error[hidden], #result[hidden] { display: none; }
   </style>
 </head>
 <body>
-  <h1>Bill Manager</h1>
-  <p>Upload a bill or receipt (JPEG, PNG, or PDF) for automated analysis.</p>
-  <form id="uploadForm">
-    <input type="file" id="fileInput" name="file" accept="image/jpeg,image/png,application/pdf" required>
-    <br>
-    <button type="submit" id="submitBtn">Analyze Bill</button>
-  </form>
-  <div id="loading">Analyzing...</div>
-  <div id="error"></div>
-  <div id="result"></div>
+  <main class="container">
+    <hgroup>
+      <h1>Bill Manager</h1>
+      <p>Upload a bill or receipt (JPEG, PNG, or PDF) for automated analysis.</p>
+    </hgroup>
+
+    <form id="uploadForm">
+      <fieldset role="group">
+        <input type="file" id="fileInput" name="file" accept="image/jpeg,image/png,application/pdf" required>
+        <button type="submit" id="submitBtn">Analyze</button>
+      </fieldset>
+    </form>
+
+    <div id="error" role="alert" hidden></div>
+    <div id="result" hidden></div>
+  </main>
 
   <script>
     const form = document.getElementById('uploadForm');
     const submitBtn = document.getElementById('submitBtn');
-    const loadingEl = document.getElementById('loading');
     const errorEl = document.getElementById('error');
     const resultEl = document.getElementById('result');
 
-    form.addEventListener('submit', async (e) => {
+    function formatNumber(value) {
+      return Number(value).toFixed(2);
+    }
+
+    function formatTimestamp(iso) {
+      const d = new Date(iso);
+      return d.toLocaleString();
+    }
+
+    function renderResult(data) {
+      const a = data.analysis;
+      const itemsHtml = a.items.map(function(item) {
+        return '<tr>'
+          + '<td>' + escapeHtml(item.name) + '</td>'
+          + '<td>' + formatNumber(item.quantity) + '</td>'
+          + '<td>' + formatNumber(item.unitPrice) + '</td>'
+          + '<td>' + formatNumber(item.totalPrice) + '</td>'
+          + '</tr>';
+      }).join('');
+
+      const tagsHtml = (a.categoryTags && a.categoryTags.length)
+        ? '<div class="tags">' + a.categoryTags.map(function(t) { return '<kbd>' + escapeHtml(t) + '</kbd>'; }).join('') + '</div>'
+        : '';
+
+      return '<article>'
+        + '<header>'
+        + '<h3 class="result-header">' + escapeHtml(data.originalFileName) + '</h3>'
+        + '<p class="merchant">' + escapeHtml(a.merchantName) + '</p>'
+        + '</header>'
+        + '<table>'
+        + '<thead><tr><th>Item</th><th>Qty</th><th>Unit price</th><th>Total</th></tr></thead>'
+        + '<tbody>' + itemsHtml + '</tbody>'
+        + '</table>'
+        + '<div class="summary">'
+        + '<span class="total">Total: ' + formatNumber(a.totalAmount) + ' ' + escapeHtml(a.currency) + '</span>'
+        + tagsHtml
+        + '</div>'
+        + '<footer class="meta">'
+        + '<span>ID: ' + data.id.substring(0, 8) + '&hellip;</span>'
+        + '<span>' + formatTimestamp(data.analyzedAt) + '</span>'
+        + '</footer>'
+        + '</article>';
+    }
+
+    function renderError(status, data) {
+      return '<article>'
+        + '<header><strong>Error ' + status + '</strong></header>'
+        + '<p>' + escapeHtml(data.code || 'UNKNOWN') + ': ' + escapeHtml(data.message || 'An unexpected error occurred.') + '</p>'
+        + '</article>';
+    }
+
+    function escapeHtml(text) {
+      var div = document.createElement('div');
+      div.appendChild(document.createTextNode(text));
+      return div.innerHTML;
+    }
+
+    form.addEventListener('submit', async function(e) {
       e.preventDefault();
-      const fileInput = document.getElementById('fileInput');
+      var fileInput = document.getElementById('fileInput');
       if (!fileInput.files.length) return;
 
-      errorEl.style.display = 'none';
-      resultEl.style.display = 'none';
-      loadingEl.style.display = 'block';
+      errorEl.hidden = true;
+      resultEl.hidden = true;
+      submitBtn.setAttribute('aria-busy', 'true');
+      submitBtn.textContent = 'Analyzing\u2026';
       submitBtn.disabled = true;
 
-      const formData = new FormData();
+      var formData = new FormData();
       formData.append('file', fileInput.files[0]);
 
       try {
-        const response = await fetch('/api/bills/upload', { method: 'POST', body: formData });
-        const data = await response.json();
+        var response = await fetch('/api/bills/upload', { method: 'POST', body: formData });
+        var data = await response.json();
         if (!response.ok) {
-          errorEl.textContent = 'Error ' + response.status + ': ' + data.code + ' \u2014 ' + data.message;
-          errorEl.style.display = 'block';
+          errorEl.innerHTML = renderError(response.status, data);
+          errorEl.hidden = false;
         } else {
-          resultEl.textContent = JSON.stringify(data, null, 2);
-          resultEl.style.display = 'block';
+          resultEl.innerHTML = renderResult(data);
+          resultEl.hidden = false;
         }
       } catch (err) {
-        errorEl.textContent = 'Network error: ' + err.message;
-        errorEl.style.display = 'block';
+        errorEl.innerHTML = renderError(0, { code: 'NETWORK_ERROR', message: err.message });
+        errorEl.hidden = false;
       } finally {
-        loadingEl.style.display = 'none';
+        submitBtn.removeAttribute('aria-busy');
+        submitBtn.textContent = 'Analyze';
         submitBtn.disabled = false;
       }
     });
