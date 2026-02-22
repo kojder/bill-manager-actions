@@ -14,6 +14,7 @@
     .meta { display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--pico-muted-color); }
     table td:nth-child(2), table td:nth-child(3), table td:nth-child(4),
     table th:nth-child(2), table th:nth-child(3), table th:nth-child(4) { text-align: right; }
+    .file-name { flex: 1; padding: 0.5rem; color: var(--pico-muted-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #error[hidden], #result[hidden] { display: none; }
   </style>
 </head>
@@ -26,7 +27,9 @@
 
     <form id="uploadForm">
       <fieldset role="group">
-        <input type="file" id="fileInput" name="file" accept="image/jpeg,image/png,application/pdf" required>
+        <input type="file" id="fileInput" name="file" accept="image/jpeg,image/png,application/pdf" required hidden>
+        <button type="button" id="chooseBtn" class="outline">Choose file</button>
+        <span id="fileName" class="file-name">No file selected</span>
         <button type="submit" id="submitBtn">Analyze</button>
       </fieldset>
     </form>
@@ -37,9 +40,17 @@
 
   <script>
     const form = document.getElementById('uploadForm');
+    const fileInput = document.getElementById('fileInput');
+    const chooseBtn = document.getElementById('chooseBtn');
+    const fileNameEl = document.getElementById('fileName');
     const submitBtn = document.getElementById('submitBtn');
     const errorEl = document.getElementById('error');
     const resultEl = document.getElementById('result');
+
+    chooseBtn.addEventListener('click', function() { fileInput.click(); });
+    fileInput.addEventListener('change', function() {
+      fileNameEl.textContent = fileInput.files.length ? fileInput.files[0].name : 'No file selected';
+    });
 
     function formatNumber(value) {
       return Number(value).toFixed(2);
@@ -100,7 +111,6 @@
 
     form.addEventListener('submit', async function(e) {
       e.preventDefault();
-      var fileInput = document.getElementById('fileInput');
       if (!fileInput.files.length) return;
 
       errorEl.hidden = true;
