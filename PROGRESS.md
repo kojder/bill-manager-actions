@@ -7,27 +7,7 @@ Read at the start of every conversation (referenced from CLAUDE.md).
 
 ## Current Task
 
-### [W-1] Task 18: Category Classification — PurchaseCategory Enum + Enhanced Prompt
-**Source:** tasks.md Task 18
-**Branch:** `feat/task-18-category-enum`
-**Status:** In Progress
-
-#### Steps
-- [x] Create `PurchaseCategory` enum with `@JsonValue`/`@JsonCreator`
-- [x] Change `BillAnalysisResult.categoryTags` from `List<String>` to `List<PurchaseCategory>`
-- [x] Enhance `SYSTEM_PROMPT` with category taxonomy and multi-tag instruction
-- [x] Create `PurchaseCategoryTest` (10 tests)
-- [x] Update 6 existing test files
-- [x] Verify: spotless:apply + checkstyle:check + test (161 tests, 0 failures)
-- [x] Update documentation (api-plan.md, tasks.md)
-- [ ] Self-review with /spring-java-reviewer
-- [ ] Commit and create PR
-
-#### Notes
-- Root cause: `BeanOutputConverter` generated `"type": "string"` — no enum constraint in JSON schema
-- Fix: enum → `"enum": ["grocery", ...]` in schema + explicit prompt taxonomy
-- `@JsonCreator` falls back to OTHER for unknown values (Groq doesn't enforce JSON Schema)
-- User decision: multi-tag (humidifier = electronics + home_and_garden)
+_No active task._
 
 <!-- Template for adding a new task:
 

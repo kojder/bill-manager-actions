@@ -114,6 +114,7 @@ com.example.bill_manager/
 │   ├── BillAnalysisResult.java     # AI analysis result
 │   ├── BillAnalysisResponse.java   # response wrapper (id, filename, result, timestamp)
 │   ├── LineItem.java               # single bill line item
+│   ├── PurchaseCategory.java       # enum: 10 categories with @JsonValue/@JsonCreator
 │   └── ErrorResponse.java          # standardized error
 │
 └── exception/      # Global error handling
@@ -198,7 +199,7 @@ Groq provides an OpenAI-compatible endpoint, allowing the use of Spring AI OpenA
 
 ```properties
 spring.ai.openai.api-key=${GROQ_API_KEY}
-spring.ai.openai.base-url=https://api.groq.com/openai/v1
+spring.ai.openai.base-url=https://api.groq.com/openai
 spring.ai.openai.chat.options.model=meta-llama/llama-4-scout-17b-16e-instruct
 spring.ai.openai.chat.options.temperature=0.3
 spring.ai.openai.chat.options.max-tokens=2048

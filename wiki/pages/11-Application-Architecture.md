@@ -64,9 +64,10 @@ com.example.bill_manager/
 │   └── PdfConversionException.java  # Custom exception with ErrorCode enum
 │
 ├── dto/                             # Data Transfer Objects (Java Records)
-│   ├── BillAnalysisResult.java      # LLM response: merchant, items, total
+│   ├── BillAnalysisResult.java      # LLM response: merchant, items, total, categories
 │   ├── BillAnalysisResponse.java    # API response: id, filename, analysis
 │   ├── LineItem.java                # Single item: name, qty, price
+│   ├── PurchaseCategory.java        # Enum: 10 categories with @JsonValue/@JsonCreator
 │   └── ErrorResponse.java          # Error: code, message, timestamp
 │
 └── exception/                       # Global error handling
@@ -159,22 +160,24 @@ public record BillAnalysisResponse(
 
 ```java
 public record BillAnalysisResult(
-    String merchantName,
-    List<LineItem> items,
-    BigDecimal totalAmount,
-    String currency,
-    List<String> categoryTags       // nullable (LLM may not return)
+    @NotBlank String merchantName,
+    @NotEmpty @Valid List<LineItem> items,
+    @NotNull @PositiveOrZero BigDecimal totalAmount,
+    @NotBlank String currency,
+    List<PurchaseCategory> categoryTags  // nullable (LLM may not return)
 ) {}
 ```
+
+**PurchaseCategory** — enum with 10 values: `grocery`, `electronics`, `restaurant`, `pharmacy`, `clothing`, `home_and_garden`, `transport`, `entertainment`, `services`, `other`. Serializes as lowercase strings (`@JsonValue`), deserializes case-insensitively with fallback to `OTHER` (`@JsonCreator`).
 
 ### LineItem
 
 ```java
 public record LineItem(
-    String name,
-    @Positive BigDecimal quantity,
-    @PositiveOrZero BigDecimal unitPrice,
-    @PositiveOrZero BigDecimal totalPrice
+    @NotBlank String name,
+    @NotNull @Positive BigDecimal quantity,
+    @NotNull @PositiveOrZero BigDecimal unitPrice,
+    @NotNull @PositiveOrZero BigDecimal totalPrice
 ) {}
 ```
 
@@ -238,6 +241,6 @@ For detailed technology decisions, see `ai/tech-stack.md` in the repository.
 
 ---
 
-*Last updated: 2026-02-22*
+*Last updated: 2026-02-23*
 
 *Sources: `ai/tech-stack.md`, `ai/api-plan.md`, `ai/prd.md`, source code tree*

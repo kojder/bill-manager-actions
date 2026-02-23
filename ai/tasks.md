@@ -290,7 +290,7 @@
 
 ### Task 10: End-to-End Integration + Simple UI ✅ COMPLETED
 
-**Status:** PR #12 (branch `feat/task-10-integration`)
+**Status:** Merged to master (PR #12)
 
 **Description:** Connect the entire flow: upload → validation → preprocessing → AI analysis → result. In-memory storage, health endpoint, simple HTML upload form.
 
@@ -411,7 +411,9 @@
 
 ---
 
-### Task 14: Token Usage Tracking for Code Review
+### Task 14: Token Usage Tracking for Code Review ✅ COMPLETED
+
+**Status:** Merged to master (PR #13)
 
 **Description:** Add automatic token usage extraction and presentation for Claude Code Review runs. Display summed input/output/cache tokens in GitHub Step Summary and save metrics as JSON artifact for cross-PR comparison.
 
@@ -423,11 +425,16 @@
 **Claude review:** CLAUDE.md review section (global) — workflow quality, script correctness
 
 **Expected review points:**
-- [ ] Token metrics summed across all turns (not per-turn)
-- [ ] Readable format (e.g., `72.22k input` instead of raw numbers)
-- [ ] Metrics saved as `reports/pr-N-usage.json` for artifact persistence
-- [ ] Step Summary displays table with all key metrics
-- [ ] Graceful handling when `execution_file` is missing or malformed
+- [x] Token metrics summed across all turns (not per-turn)
+- [x] Readable format (e.g., `72.22k input` instead of raw numbers)
+- [x] Metrics saved as JSON artifact for persistence
+- [x] Step Summary displays table with all key metrics
+- [x] Graceful handling when `execution_file` is missing or malformed
+
+**Implementation notes:**
+- Token usage extracted from `execution_file` output of `claude-code-action`
+- Metrics uploaded as workflow artifact (`claude-review-usage-pr-{N}`)
+- Step Summary renders a formatted table with input/output/cache token counts
 
 **Size:** S
 
@@ -545,9 +552,9 @@
 
 ## Phase 6: AI Improvements
 
-### Task 18: Category Classification — PurchaseCategory Enum + Enhanced Prompt
+### Task 18: Category Classification — PurchaseCategory Enum + Enhanced Prompt ✅ COMPLETED
 
-**Status:** In Progress
+**Status:** Merged to master (PR #20)
 
 **Description:** Fix inconsistent LLM category classification (e.g. Klarta humidifier tagged as "grocery" via PNG, "electronics" via PDF). Replace free-form `List<String> categoryTags` with `PurchaseCategory` enum and enhance system prompt with explicit category taxonomy.
 
@@ -562,11 +569,11 @@
 **Claude review:** **CLAUDE.md AI Module review rules** + CLAUDE.md review section (global)
 
 **Expected review points:**
-- [ ] Enum constrains LLM output via BeanOutputConverter JSON schema (`"enum": [...]`)
-- [ ] System prompt defines each category with examples, not just 3 vague hints
-- [ ] Multi-tag support: "An item may belong to multiple categories — assign all that apply"
-- [ ] Graceful degradation: `@JsonCreator` falls back to OTHER for unknown values
-- [ ] No breaking change in JSON API — `@JsonValue` serializes as lowercase strings
+- [x] Enum constrains LLM output via BeanOutputConverter JSON schema (`"enum": [...]`)
+- [x] System prompt defines each category with examples, not just 3 vague hints
+- [x] Multi-tag support: "An item may belong to multiple categories — assign all that apply"
+- [x] Graceful degradation: `@JsonCreator` falls back to OTHER for unknown values
+- [x] No breaking change in JSON API — `@JsonValue` serializes as lowercase strings
 
 **Implementation notes:**
 - Root cause: `BeanOutputConverter` generated `"type": "string"` for `List<String>` — no constraint on LLM output

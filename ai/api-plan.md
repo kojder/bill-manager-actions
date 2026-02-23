@@ -44,7 +44,7 @@ Upload a bill file and trigger automatic AI analysis.
     "currency": "PLN",
     "categoryTags": ["grocery"]
   },
-  "analyzedAt": "2026-02-06T14:30:00"
+  "analyzedAt": "2026-02-06T14:30:00Z"
 }
 ```
 
@@ -81,7 +81,7 @@ Retrieve a previous analysis result.
     "currency": "PLN",
     "categoryTags": ["grocery"]
   },
-  "analyzedAt": "2026-02-06T14:30:00"
+  "analyzedAt": "2026-02-06T14:30:00Z"
 }
 ```
 
@@ -127,11 +127,11 @@ AI analysis result — data extracted from the bill.
 
 ```java
 public record BillAnalysisResult(
-    String merchantName,
-    List<LineItem> items,
-    BigDecimal totalAmount,
-    String currency,
-    List<PurchaseCategory> categoryTags
+    @NotBlank String merchantName,
+    @NotEmpty @Valid List<LineItem> items,
+    @NotNull @PositiveOrZero BigDecimal totalAmount,
+    @NotBlank String currency,
+    List<PurchaseCategory> categoryTags  // nullable (LLM may not return)
 ) {}
 ```
 
@@ -143,10 +143,10 @@ Single line item on the bill.
 
 ```java
 public record LineItem(
-    String name,
-    BigDecimal quantity,
-    BigDecimal unitPrice,
-    BigDecimal totalPrice
+    @NotBlank String name,
+    @NotNull @Positive BigDecimal quantity,
+    @NotNull @PositiveOrZero BigDecimal unitPrice,
+    @NotNull @PositiveOrZero BigDecimal totalPrice
 ) {}
 ```
 

@@ -11,6 +11,7 @@ Build an application for automated bill analysis (images/PDF) using LLMs (Groq) 
 - **Runtime**: Java 17, Spring Boot 3.5.x
 - **Spring AI** (OpenAI Starter): Communication with Groq API (OpenAI protocol compatibility)
 - **Image Processing**: java.awt for optimizing image dimensions before LLM submission
+- **PDF Processing**: Apache PDFBox 3.0.4 for PDF-to-image conversion
 - **Storage**: In-memory (ConcurrentHashMap) — POC scope, no external database
 - **Principles**: SOLID, Clean Code, Java 17 best practices
 
@@ -24,10 +25,10 @@ Build an application for automated bill analysis (images/PDF) using LLMs (Groq) 
 
 ## 3. Application Workflow
 
-1. **Upload**: User uploads a file via browser or REST API (`POST /api/bills/upload`)
+1. **Upload**: User uploads a file (JPEG, PNG, PDF) via browser or REST API (`POST /api/bills/upload`)
 2. **Validation**: MIME type validation by file content (magic bytes), size limit (10MB), filename sanitization
-3. **Pre-processing**: Scale image to max 1200px width, strip EXIF metadata
-4. **AI Analysis**: Spring AI `ChatClient` with Structured Output (extraction of: items, unit prices, total amount, category tags)
+3. **Pre-processing**: PDF pages converted to JPEG via PDFBox (max 5 pages); images scaled to max 1200px width, EXIF metadata stripped
+4. **AI Analysis**: Spring AI `ChatClient` with Structured Output — multi-image support (extraction of: merchant, items, total, currency, category tags via `PurchaseCategory` enum)
 5. **Result**: JSON response with analysis result, retrievable via `GET /api/bills/{id}`
 
 ## 4. Checkstyle — Static Code Analysis
@@ -75,14 +76,12 @@ Cleanup (auto-remove "rerun" label, only on rerun trigger)
 
 **Key behavior:** On every code push (`synchronize`), the full chain `Checkstyle → Unit Tests → Claude Code Review` runs. PR description enrichment only runs on PR open or when the `rerun` label is added.
 
-### Structured Review Reports
+### Review Output
 
-Claude Code Review produces a structured markdown report uploaded as a workflow artifact (`claude-review-report-pr-{N}`). The report includes:
-- **Execution Plan** — what was checked and why
-- **Summary, Strengths, Risks/Bugs**
-- **Path-Specific Rule Compliance** — for affected paths (ai/, upload/, config/)
-- **Suggested patches** — unified diffs for identified issues
-- **Next Actions** — recommendations for the author
+Claude Code Review produces:
+- **Inline PR comments** — specific code-level findings posted directly on changed lines
+- **Summary comment** — overview posted via `gh pr comment`
+- **Token usage artifact** — `claude-review-usage-pr-{N}` with input/output/cache token metrics
 
 ### PR Description Enrichment
 
@@ -101,7 +100,7 @@ In addition to the main CI pipeline, the following manual workflows are availabl
 ### Tool Restrictions (Security)
 
 All Claude workflows use scoped `--allowedTools` whitelists:
-- **ci.yml** (review): Glob, Grep, Read, inline comments, `gh pr` commands, report writing
+- **ci.yml** (review): Glob, Grep, Read, inline comments, `gh pr` commands
 - **claude.yml** (interactive): Read/Write/Edit, `gh pr/issue` commands, `git diff/log/status`, `./mvnw spotless:check/apply`, `./mvnw checkstyle:check`, `./mvnw test`
 - **pattern-police.yml** (audit): report writing, `gh pr diff/view`
 
@@ -136,6 +135,12 @@ Path-specific review rules are defined in `CLAUDE.md` under "Path-Specific Revie
 
 # Run tests
 ./mvnw test
+
+# Auto-fix formatting (run before commit)
+./mvnw spotless:apply
+
+# Check formatting (CI gate)
+./mvnw spotless:check
 
 # Run Checkstyle
 ./mvnw checkstyle:check
