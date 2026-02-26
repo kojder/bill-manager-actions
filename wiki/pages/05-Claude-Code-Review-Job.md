@@ -9,7 +9,7 @@
 - [The Review Job in the Pipeline](#the-review-job-in-the-pipeline)
 - [Prompt Anatomy](#prompt-anatomy)
 - [Review Workflow](#review-workflow)
-- [Structured Report Format](#structured-report-format)
+- [Review Output Format](#review-output-format)
 - [Task Context: How PR Description Feeds the Review](#task-context-how-pr-description-feeds-the-review)
 - [Token Usage Tracking](#token-usage-tracking)
 - [Artifact Upload and Download](#artifact-upload-and-download)
@@ -64,7 +64,6 @@ You are a Senior Java Developer reviewing this Pull Request.
 ```
 - Use `gh pr diff` as your PRIMARY source of changes
 - Use `Read` tool for file contents — NEVER use `gh api` to read files
-- Use `Write` tool to create report files — it auto-creates directories, no `mkdir` needed
 - You MAY read related files (interfaces, parent classes, callers, test counterparts)
   when needed to verify correctness — keep it targeted (max 5 extra file reads)
 - Use `Grep`/`Glob` to find related code — this is cheaper than reading full files
@@ -84,13 +83,23 @@ These rules minimize token usage by directing Claude to use the diff as primary 
 
 This tells Claude to read the enriched PR description before starting the review, ensuring it knows what the PR is supposed to accomplish and what findings are expected.
 
-### Review Rules Reference
+### Specialized Review Skills
+
+After gathering context, Claude classifies the diff and conditionally invokes specialized review skills:
 
 ```
-Apply the code review guidelines from CLAUDE.md, including:
-- Global review scope (what to review and what to skip)
-- Path-specific rules for ai/, upload/, and config/ packages
+### Java Source Review (spring-java-reviewer)
+IF the diff contains changes to `*.java` files under `src/main/java/` or `src/test/java/`:
+- Invoke the `/spring-java-reviewer` skill, passing the changed Java file paths
+- The skill performs deep analysis: SOLID, Spring patterns, JPA, OWASP security
+- Use Critical and Warning findings for INLINE COMMENTS on affected lines
+- Include the full skill report (with Good Practices) in the SUMMARY COMMENT
+
+IF the diff contains ONLY non-Java changes (docs, wiki, config, workflows):
+- Skip the skill — review using CLAUDE.md rules directly
 ```
+
+This section is extensible — future skills (e.g., frontend-review for `*.ts` changes) can be added as additional subsections following the same IF/SKIP pattern. The skill's internal reference file reads do not count toward the "max 5 extra file reads" budget.
 
 ### Exclusion Rules
 
@@ -101,18 +110,17 @@ DO NOT comment on test failures (handled by test CI job).
 
 ### Review Workflow Steps
 
-The prompt defines a 4-step workflow:
+The prompt defines a 2-step workflow:
 
-1. **Execution Plan** — List which checks to perform and which files to examine
-2. **Inline Review** — Post inline comments on specific code issues
-3. **PR Summary** — Post a top-level PR comment with overall assessment
-4. **Structured Report** — Write a markdown report to `reports/pr-{N}-review.md`
+1. **Inline Review** — Post inline comments on specific code issues (including Critical and Warning findings from the `spring-java-reviewer` skill if invoked)
+2. **Summary Comment** — Post a top-level PR comment with verdict, key findings, and the skill's structured report as an appendix (if the skill was used)
 
 ### Safety Constraints
 
 ```
 ## Safety
-- Do NOT modify any source files — only write the report under reports/
+- Do NOT modify any source files
+- Do NOT create or write any files
 - Do NOT run build, test, or formatting commands
 - Do NOT push or commit changes
 ```
@@ -132,17 +140,19 @@ sequenceDiagram
     CCA->>GH: gh pr view (read enriched description)
     CCA->>GH: gh pr diff (read code changes)
     CCA->>CCA: Read CLAUDE.md (path-specific rules)
-    CCA->>CCA: Build execution plan
+
+    alt Diff contains *.java files
+        CCA->>CCA: Invoke /spring-java-reviewer skill
+        CCA->>CCA: Skill reads reference checklists + source files
+        CCA->>CCA: Skill produces structured report (Critical/Warning/Good)
+    end
 
     Note over CCA: Review Phase
-    CCA->>GH: Post inline comments on specific lines
-    CCA->>GH: Post PR summary comment
-
-    Note over CCA: Report Phase
-    CCA->>CCA: Write reports/pr-N-review.md
+    CCA->>GH: Post inline comments (incl. skill findings)
+    CCA->>GH: Post PR summary comment (incl. skill report appendix)
     CCA-->>CI: Action completes
 
-    CI->>ART: Upload artifact (claude-review-report-pr-N)
+    CI->>ART: Upload token usage artifact
 ```
 
 **What Claude produces:**
@@ -150,53 +160,26 @@ sequenceDiagram
 | Output | Where | Format |
 |--------|-------|--------|
 | Inline comments | On specific PR lines | GitHub inline review comments |
-| PR summary | Top-level PR comment | Markdown comment |
-| Structured report | `reports/pr-{N}-review.md` | Markdown file (artifact) |
+| PR summary | Top-level PR comment (sticky) | Markdown comment with skill report appendix |
+| Token usage | `reports/pr-{N}-usage.json` | JSON artifact |
 
 ---
 
-## Structured Report Format
+## Review Output Format
 
-The report written to `reports/pr-{N}-review.md` follows this structure:
+The review produces two main outputs:
 
-### 1. Execution Plan
+### 1. Inline Comments
 
-What Claude checked and why — which files were examined, which rules were applied.
+Posted on specific PR lines for code issues found in the diff. When the `spring-java-reviewer` skill is active, its Critical and Warning findings are posted as inline comments.
 
-### 2. Summary
+### 2. Summary Comment (Sticky)
 
-High-level assessment of the PR.
+A single top-level PR comment (updated on each push via `use_sticky_comment: true`) containing:
 
-### 3. Strengths
-
-What the PR does well.
-
-### 4. Risks / Potential Bugs
-
-Logical errors, security issues, edge cases, or architectural concerns found.
-
-### 5. Path-Specific Rule Compliance
-
-Only for affected paths — checks against the rules defined in [CLAUDE.MD as Review Brain](04-CLAUDE-MD-as-Review-Brain):
-
-- **AI Module** (`**/ai/**`) — timeout, retry, token limits, structured output
-- **Upload Module** (`**/upload/**`) — MIME validation, size checks, path traversal
-- **Config Module** (`**/config/**`) — secrets, env separation, configurable URLs
-
-### 6. Suggested Patches
-
-Minimal code changes as unified diff blocks:
-
-````markdown
-```diff
-- old code
-+ suggested fix
-```
-````
-
-### 7. Next Actions
-
-Prioritized list of what the PR author should address.
+- **Verdict** — approve / request changes
+- **Key findings** — count and one-line summary per finding
+- **Skill report appendix** (when `spring-java-reviewer` was invoked) — full structured report with Critical Issues, Warnings, and Good Practices table
 
 ---
 
@@ -282,25 +265,25 @@ Based on reviews from PR #7 through PR #12 (7 runs):
 
 ## Artifact Upload and Download
 
-After Claude writes the report and token metrics are collected, the CI pipeline uploads everything as a GitHub Actions artifact:
+After the review completes, a dedicated step collects token metrics and uploads them as a GitHub Actions artifact:
 
 ```yaml
-- name: Upload review report
+- name: Upload usage metrics
   if: always() && (hashFiles('reports/**') != '')
   uses: actions/upload-artifact@v4
   with:
-    name: claude-review-report-pr-${{ github.event.pull_request.number }}
+    name: claude-review-usage-pr-${{ github.event.pull_request.number }}
     path: reports/**
 ```
 
 **Key details:**
-- Artifact is named `claude-review-report-pr-{N}` (e.g., `claude-review-report-pr-7`)
-- Contains both the review report (`pr-{N}-review.md`, `pr-{N}-comment.md`) and token metrics (`pr-{N}-usage.json`)
+- Artifact is named `claude-review-usage-pr-{N}` (e.g., `claude-review-usage-pr-12`)
+- Contains token metrics (`pr-{N}-usage.json`)
 - Only uploaded if `reports/` directory has files
 - Available for download from the GitHub Actions run summary page
 - Default retention: 90 days
 
-**To download:** Go to the PR → Checks → CI Pipeline run → Artifacts section → Download `claude-review-report-pr-{N}`
+**To download:** Go to the PR → Checks → CI Pipeline run → Artifacts section → Download `claude-review-usage-pr-{N}`
 
 ---
 
@@ -310,13 +293,12 @@ The claude-review job has a strict `allowedTools` whitelist:
 
 ```yaml
 claude_args: |
-  --max-turns 20
-  --allowedTools "Glob,Grep,Read,
+  --max-turns 35
+  --allowedTools "Glob,Grep,Read,Skill,
                   mcp__github_inline_comment__create_inline_comment,
-                  Bash(gh pr comment:*),
                   Bash(gh pr diff:*),
                   Bash(gh pr view:*),
-                  Write"
+                  Bash(gh pr comment:*)"
 ```
 
 | Tool | Purpose |
@@ -324,18 +306,18 @@ claude_args: |
 | `Glob` | Find files by pattern (e.g., locate interfaces, test counterparts) |
 | `Grep` | Search code patterns (e.g., find callers of a changed method) |
 | `Read` | Read full file content (limited by token budget — max 5 files beyond diff) |
+| `Skill` | Invoke specialized review skills (e.g., `spring-java-reviewer` for Java PRs) |
 | `mcp__github_inline_comment__create_inline_comment` | Post inline comments on specific PR lines |
-| `Bash(gh pr comment:*)` | Post top-level PR comments |
 | `Bash(gh pr diff:*)` | Read the PR diff |
 | `Bash(gh pr view:*)` | Read PR metadata and description |
-| `Write` | Write the structured report file |
+| `Bash(gh pr comment:*)` | Post top-level PR comments |
 
 Additional configuration:
-- `--max-turns 20` — limits the number of agentic turns to control token consumption
+- `--max-turns 35` — limits the number of agentic turns to control token consumption (extra headroom for skill invocation)
 - `use_sticky_comment: true` — edits a single PR comment instead of posting new ones on each push
 
 **What Claude CANNOT do in this job:**
-- Edit source files (no `Edit` tool)
+- Edit or write source files (no `Edit` or `Write` tools)
 - Run tests or checkstyle
 - Execute arbitrary bash commands
 - Push code or modify branches
@@ -354,6 +336,6 @@ For a full comparison of tool restrictions across all workflows, see [Security a
 
 ---
 
-*Last updated: 2026-02-22*
+*Last updated: 2026-02-26*
 
-*Sources: `.github/workflows/ci.yml` (claude-review job), `CLAUDE.md` (Review Scope), `ai/tasks.md` (expected review points examples)*
+*Sources: `.github/workflows/ci.yml` (claude-review job), `CLAUDE.md` (Review Scope), `.claude/skills/spring-java-reviewer/` (review skill definition), `ai/tasks.md` (expected review points examples)*

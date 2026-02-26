@@ -223,6 +223,23 @@ jobs:
             3. Read CLAUDE.md for review rules (this file is always relevant)
             4. Only then use `Read` for specific files if the diff alone is insufficient
 
+            ## Specialized Review Skills
+
+            After gathering context, classify the diff to decide which review skills to activate.
+
+            ### Java Source Review (spring-java-reviewer)
+            IF the diff contains changes to `*.java` files under `src/main/java/` or `src/test/java/`:
+            - Invoke the `/spring-java-reviewer` skill, passing the changed Java file paths
+            - The skill performs deep analysis: SOLID, Spring patterns, JPA, OWASP security
+            - Use Critical and Warning findings for INLINE COMMENTS on affected lines
+            - Include the full skill report (with Good Practices) in the SUMMARY COMMENT
+
+            IF the diff contains ONLY non-Java changes (docs, wiki, config, workflows):
+            - Skip the skill — review using CLAUDE.md rules directly
+
+            NOTE: The skill's reference file reads do NOT count toward the
+            "max 5 extra file reads" limit in Token Budget Rules.
+
             ## Review Rules
             - Apply code review guidelines from CLAUDE.md (global + path-specific rules)
             - DO NOT comment on formatting issues (handled by Checkstyle CI job)
@@ -230,10 +247,14 @@ jobs:
 
             ## Review Workflow
             1. INLINE REVIEW: Post inline comments for specific code issues found in the diff
+               (including Critical and Warning findings from the spring-java-reviewer skill
+               if it was invoked)
             2. SUMMARY COMMENT: After completing inline review, post a PR comment using
                `gh pr comment` with a concise review summary including:
                verdict (approve/request changes), key findings count,
-               and a one-line summary per finding
+               and a one-line summary per finding.
+               If the spring-java-reviewer skill was used, append its structured report
+               (Critical Issues, Warnings, Good Practices table) as an appendix.
 
             ## Inline Comment Rules
             - ONLY comment on lines that appear in `gh pr diff` output (lines with + or - prefix)
@@ -247,8 +268,8 @@ jobs:
             - Do NOT run build, test, or formatting commands
             - Do NOT push or commit changes
           claude_args: |
-            --max-turns 30
-            --allowedTools "Glob,Grep,Read,mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*)"
+            --max-turns 35
+            --allowedTools "Glob,Grep,Read,Skill,mcp__github_inline_comment__create_inline_comment,Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*)"
 
       - name: Review Status
         if: always() && steps.claude_review.outcome == 'failure'
