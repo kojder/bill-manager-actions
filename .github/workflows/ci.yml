@@ -245,6 +245,13 @@ jobs:
             - DO NOT comment on formatting issues (handled by Checkstyle CI job)
             - DO NOT comment on test failures (handled by test CI job)
 
+            ## Output Rules — CRITICAL
+            Your text output is NOT visible to anyone. You MUST post all review findings
+            using the tools below — otherwise your review will be completely invisible:
+            - Use `mcp__github_inline_comment__create_inline_comment` for inline code comments
+            - Use `gh pr comment` to post the summary review as a PR comment
+            Do NOT just output text — it will not be seen by the PR author.
+
             ## Review Workflow
             1. INLINE REVIEW: Post inline comments for specific code issues found in the diff
                (including Critical and Warning findings from the spring-java-reviewer skill
@@ -253,7 +260,7 @@ jobs:
                `gh pr comment` with a concise review summary including:
                verdict (approve/request changes), key findings count,
                and a one-line summary per finding.
-               If the spring-java-reviewer skill was used, append its structured report
+               If the spring-java-reviewer skill was used, append its full structured report
                (Critical Issues, Warnings, Good Practices table) as an appendix.
 
             ## Inline Comment Rules
