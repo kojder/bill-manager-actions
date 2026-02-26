@@ -33,6 +33,12 @@ public class PdfConversionServiceImpl implements PdfConversionService {
           PdfConversionException.ErrorCode.PDF_READ_FAILED, "PDF content must not be null");
     }
 
+    LOG.debug(
+        "Starting PDF conversion: {} bytes, maxPages={}, dpi={}",
+        pdfContent.length,
+        uploadProperties.pdfMaxPages(),
+        uploadProperties.pdfRenderDpi());
+
     try (PDDocument document = Loader.loadPDF(pdfContent)) {
       validateDocument(document);
 
