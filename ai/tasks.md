@@ -590,11 +590,49 @@
 
 ---
 
+### Task 19: Structured SLF4J Logging Across Application
+
+**Status:** In Progress
+
+**Description:** Add consistent SLF4J logging across all application layers. 5 out of 8 service/controller classes had zero logging. `GlobalExceptionHandler` logged only 1 of 8 exception types. The critical upload pipeline (upload → validation → preprocessing → AI → store) was invisible in logs.
+
+**Scope:**
+- Modified: `src/main/java/.../upload/BillUploadController.java` — added Logger, 5 log statements (INFO for request in/out, DEBUG for pipeline steps)
+- Modified: `src/main/java/.../exception/GlobalExceptionHandler.java` — added WARN/ERROR logs to all 7 silent exception handlers (4xx→WARN, 5xx→ERROR)
+- Modified: `src/main/java/.../upload/FileValidationServiceImpl.java` — added Logger, DEBUG for validation pass and filename sanitization
+- Modified: `src/main/java/.../upload/ImagePreprocessingServiceImpl.java` — added Logger, DEBUG for image dimensions before/after preprocessing
+- Modified: `src/main/java/.../upload/PdfConversionServiceImpl.java` — added DEBUG log at conversion start (byte size, config)
+- Modified: `src/main/java/.../config/ApiKeyValidator.java` — added Logger, INFO on successful startup validation
+- Modified: `src/main/java/.../upload/InMemoryResultStore.java` — added Logger, DEBUG for save (with store size) and not-found lookups
+- Modified: `src/main/resources/application.properties` — added explicit `logging.level.com.example.bill_manager=INFO`
+
+**Claude review:** CLAUDE.md review section (global) + **CLAUDE.md AI Module review rules** (no PII in logs)
+
+**Expected review points:**
+- [ ] Parameterized logging (`LOG.info("msg {}", var)`) — no string concatenation
+- [ ] Appropriate log levels: INFO for business events, DEBUG for diagnostics, WARN for 4xx, ERROR for 5xx
+- [ ] No PII in logs — no file content, no API keys; only metadata (size, MIME, filename, UUID)
+- [ ] Logger field follows project convention: `private static final Logger LOG = ...`
+- [ ] No excessive logging — focused on what's useful for debugging and monitoring
+
+**Implementation notes:**
+- SLF4J + Logback (Spring Boot default) — zero new dependencies
+- No `logback-spring.xml` — Spring Boot defaults sufficient
+- `GlobalExceptionHandler` uses `HttpStatus.is5xxServerError()` to dynamically choose WARN vs ERROR
+- For 5xx errors, exception stacktrace included as third `LOG.error()` argument
+- `BillUploadController` logs merchant name and item count from analysis result (no PII)
+- `FileValidationServiceImpl.sanitizeFilename()` logs only when filename was actually changed
+- `InMemoryResultStore.save()` logs store size — useful for monitoring unbounded growth (related to existing TODO)
+
+**Size:** S
+
+---
+
 ## Claude Code Actions Review Mapping
 
 | CLAUDE.md review section | Tasks | Key review points |
 |--------------------------|-------|-------------------|
-| Global review scope | 2, 3, 5, 10, 11, 13, 14, 16, 17, 18 | Architecture, Records, REST conventions, workflow quality, CI security, UI |
+| Global review scope | 2, 3, 5, 10, 11, 13, 14, 16, 17, 18, 19 | Architecture, Records, REST conventions, workflow quality, CI security, UI, logging |
 | Config Module rules | 4, 12 | Secrets, env separation, configurable URLs, Jira API secrets |
 | Upload Module rules | 6, 7, 8, 15 | MIME validation, size limits, path traversal, preprocessing, PDF conversion |
 | AI Module rules | 9, 15, 18 | Timeout, retry, exponential backoff, structured output, multi-image, category enum |
