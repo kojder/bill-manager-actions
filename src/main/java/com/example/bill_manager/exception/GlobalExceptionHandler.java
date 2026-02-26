@@ -24,6 +24,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(FileValidationException.class)
   public ResponseEntity<ErrorResponse> handleFileValidation(final FileValidationException ex) {
     final HttpStatus status = mapErrorCodeToStatus(ex.getErrorCode());
+    if (status.is5xxServerError()) {
+      LOG.error(
+          "File validation error: code={}, message='{}'", ex.getErrorCode(), ex.getMessage(), ex);
+    } else {
+      LOG.warn("File validation failed: code={}, message='{}'", ex.getErrorCode(), ex.getMessage());
+    }
     final ErrorResponse response =
         new ErrorResponse(ex.getErrorCode().name(), ex.getMessage(), Instant.now());
     return ResponseEntity.status(status).body(response);
@@ -31,6 +37,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(AnalysisNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleAnalysisNotFound(final AnalysisNotFoundException ex) {
+    LOG.warn("Analysis not found: {}", ex.getMessage());
     final ErrorResponse response =
         new ErrorResponse("ANALYSIS_NOT_FOUND", ex.getMessage(), Instant.now());
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
@@ -39,6 +46,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(MethodArgumentTypeMismatchException.class)
   public ResponseEntity<ErrorResponse> handleTypeMismatch(
       final MethodArgumentTypeMismatchException ex) {
+    LOG.warn("Invalid ID format: '{}'", ex.getValue());
     final ErrorResponse response =
         new ErrorResponse("INVALID_ID_FORMAT", "ID must be a valid UUID", Instant.now());
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
@@ -47,6 +55,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(MissingServletRequestPartException.class)
   public ResponseEntity<ErrorResponse> handleMissingRequestPart(
       final MissingServletRequestPartException ex) {
+    LOG.warn("Missing request part: {}", ex.getRequestPartName());
     final ErrorResponse response =
         new ErrorResponse("FILE_REQUIRED", "File is required and must not be empty", Instant.now());
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
@@ -55,6 +64,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   public ResponseEntity<ErrorResponse> handleMaxUploadSize(
       final MaxUploadSizeExceededException ex) {
+    LOG.warn("Upload size exceeded: {}", ex.getMessage());
     final ErrorResponse response =
         new ErrorResponse(
             "FILE_TOO_LARGE", "File size exceeds the maximum allowed limit", Instant.now());
@@ -64,6 +74,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(PdfConversionException.class)
   public ResponseEntity<ErrorResponse> handlePdfConversion(final PdfConversionException ex) {
     final HttpStatus status = mapPdfConversionErrorCodeToStatus(ex.getErrorCode());
+    if (status.is5xxServerError()) {
+      LOG.error(
+          "PDF conversion error: code={}, message='{}'", ex.getErrorCode(), ex.getMessage(), ex);
+    } else {
+      LOG.warn("PDF conversion failed: code={}, message='{}'", ex.getErrorCode(), ex.getMessage());
+    }
     final ErrorResponse response =
         new ErrorResponse(ex.getErrorCode().name(), ex.getMessage(), Instant.now());
     return ResponseEntity.status(status).body(response);
@@ -73,6 +89,16 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleImagePreprocessing(
       final ImagePreprocessingException ex) {
     final HttpStatus status = mapPreprocessingErrorCodeToStatus(ex.getErrorCode());
+    if (status.is5xxServerError()) {
+      LOG.error(
+          "Image preprocessing error: code={}, message='{}'",
+          ex.getErrorCode(),
+          ex.getMessage(),
+          ex);
+    } else {
+      LOG.warn(
+          "Image preprocessing failed: code={}, message='{}'", ex.getErrorCode(), ex.getMessage());
+    }
     final ErrorResponse response =
         new ErrorResponse(ex.getErrorCode().name(), ex.getMessage(), Instant.now());
     return ResponseEntity.status(status).body(response);
@@ -81,6 +107,12 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(BillAnalysisException.class)
   public ResponseEntity<ErrorResponse> handleBillAnalysis(final BillAnalysisException ex) {
     final HttpStatus status = mapBillAnalysisErrorCodeToStatus(ex.getErrorCode());
+    if (status.is5xxServerError()) {
+      LOG.error(
+          "Bill analysis error: code={}, message='{}'", ex.getErrorCode(), ex.getMessage(), ex);
+    } else {
+      LOG.warn("Bill analysis failed: code={}, message='{}'", ex.getErrorCode(), ex.getMessage());
+    }
     final ErrorResponse response =
         new ErrorResponse(ex.getErrorCode().name(), ex.getMessage(), Instant.now());
     return ResponseEntity.status(status).body(response);

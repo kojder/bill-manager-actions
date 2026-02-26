@@ -31,7 +31,7 @@ _No active task._
 
 | ID | Idea | Source | Priority |
 |----|------|--------|----------|
-| | _No ideas yet._ | | |
+| I-1 | Verify `spring-java-reviewer` skill triggers in CI review on next Java PR (PR #21 merged) | ad-hoc | high |
 
 <!-- Priority: low / medium / high -->
 <!-- When starting work on an idea, move it to Current Task as [W-N] and remove from this table -->

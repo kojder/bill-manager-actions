@@ -6,10 +6,14 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import javax.imageio.ImageIO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
 public class ImagePreprocessingServiceImpl implements ImagePreprocessingService {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ImagePreprocessingServiceImpl.class);
 
   private static final int MAX_WIDTH_PX = 1200;
   private static final float JPEG_QUALITY = 0.9f;
@@ -34,6 +38,13 @@ public class ImagePreprocessingServiceImpl implements ImagePreprocessingService 
             ? resizeImage(originalImage, MAX_WIDTH_PX, imageType)
             : ensureImageType(originalImage, imageType);
 
+    LOG.debug(
+        "Image preprocessed: {}x{} -> {}x{}, mimeType={}",
+        originalImage.getWidth(),
+        originalImage.getHeight(),
+        processedImage.getWidth(),
+        processedImage.getHeight(),
+        mimeType);
     return writeImage(processedImage, mimeType);
   }
 
