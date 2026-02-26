@@ -4,11 +4,15 @@ import com.example.bill_manager.config.UploadProperties;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class FileValidationServiceImpl implements FileValidationService {
+
+  private static final Logger LOG = LoggerFactory.getLogger(FileValidationServiceImpl.class);
 
   private static final byte[] JPEG_MAGIC = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF};
   private static final byte[] PNG_MAGIC = {(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
@@ -34,6 +38,8 @@ public class FileValidationServiceImpl implements FileValidationService {
           "File type not supported. Allowed: "
               + String.join(", ", uploadProperties.allowedMimeTypes()));
     }
+    LOG.debug(
+        "File validation passed: mimeType={}, size={} bytes", detectedMimeType, file.getSize());
     return detectedMimeType;
   }
 
@@ -66,7 +72,11 @@ public class FileValidationServiceImpl implements FileValidationService {
       sanitized = sanitized.substring(0, MAX_FILENAME_LENGTH);
     }
 
-    return sanitized.isBlank() ? DEFAULT_FILENAME : sanitized;
+    final String result = sanitized.isBlank() ? DEFAULT_FILENAME : sanitized;
+    if (!result.equals(originalFilename)) {
+      LOG.debug("Filename sanitized: '{}' -> '{}'", originalFilename, result);
+    }
+    return result;
   }
 
   private void validateFilePresence(final MultipartFile file) {

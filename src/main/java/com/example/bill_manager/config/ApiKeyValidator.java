@@ -1,6 +1,8 @@
 package com.example.bill_manager.config;
 
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -17,6 +19,8 @@ import org.springframework.stereotype.Component;
 @Component
 @Profile("!test")
 public class ApiKeyValidator {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ApiKeyValidator.class);
 
   @Value("${spring.ai.openai.api-key}")
   private String apiKey;
@@ -47,5 +51,7 @@ public class ApiKeyValidator {
           "GROQ_API_KEY format is invalid. Expected format: gsk_[52-characters]. "
               + "Please verify your API key from: https://console.groq.com/keys");
     }
+
+    LOG.info("Groq API key validated successfully");
   }
 }
