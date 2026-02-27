@@ -51,16 +51,12 @@ public class BillUploadController {
   @PostMapping("/upload")
   public ResponseEntity<BillAnalysisResponse> uploadBill(
       @RequestParam("file") final MultipartFile file) {
-    LOG.info(
-        "Upload request received: filename='{}', size={} bytes",
-        file.getOriginalFilename(),
-        file.getSize());
-
     final String detectedMimeType = fileValidationService.validateFile(file);
     final String sanitizedFilename =
         fileValidationService.sanitizeFilename(file.getOriginalFilename());
-    LOG.debug(
-        "File validated: mimeType={}, sanitizedFilename='{}'", detectedMimeType, sanitizedFilename);
+    LOG.info(
+        "Upload request received: filename='{}', size={} bytes", sanitizedFilename, file.getSize());
+    LOG.debug("File validated: mimeType={}", detectedMimeType);
     final byte[] fileBytes = readFileBytes(file);
 
     final List<byte[]> processedImages;
@@ -88,11 +84,8 @@ public class BillUploadController {
     final BillAnalysisResponse response =
         new BillAnalysisResponse(id, sanitizedFilename, analysis, Instant.now());
     billResultStore.save(id, response);
-    LOG.info(
-        "Bill analysis completed: id={}, merchant='{}', items={}",
-        id,
-        analysis.merchantName(),
-        analysis.items().size());
+    LOG.info("Bill analysis completed: id={}, items={}", id, analysis.items().size());
+    LOG.debug("Analysis details: id={}, merchant='{}'", id, analysis.merchantName());
     return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
