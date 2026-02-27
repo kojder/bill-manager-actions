@@ -287,6 +287,29 @@ jobs:
           echo "> Review could not run (likely workflow validation mismatch)." >> "$GITHUB_STEP_SUMMARY"
           echo "> This is expected when \`ci.yml\` differs between the PR branch and master." >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Post Review Comment
+        if: always() && steps.claude_review.outcome == 'success' && steps.claude_review.outputs.execution_file
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXEC_FILE: ${{ steps.claude_review.outputs.execution_file }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+        run: |
+          if [ ! -f "$EXEC_FILE" ]; then
+            echo "Execution file not found, skipping review comment"
+            exit 0
+          fi
+
+          jq -r '.[-1] | select(.type == "result") | .result // empty' \
+            "$EXEC_FILE" > /tmp/review.md
+
+          if [ ! -s /tmp/review.md ]; then
+            echo "No review result found in execution file"
+            exit 0
+          fi
+
+          gh pr comment "$PR_NUM" --body-file /tmp/review.md
+          echo "Review comment posted to PR #${PR_NUM}"
+
       - name: Token Usage Summary
         if: always() && steps.claude_review.outputs.execution_file
         env:
