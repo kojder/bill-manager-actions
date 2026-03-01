@@ -54,6 +54,8 @@ Expected files:
 10-Checkstyle-Configuration.md
 11-Application-Architecture.md
 12-Contributing-Guide.md
+13-Troubleshooting-and-Lessons-Learned.md
+14-Jira-Integration-Setup.md
 ```
 
 ---

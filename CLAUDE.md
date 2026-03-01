@@ -5,6 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## CRITICAL Rules
 
 - **NEVER run `git push` in local CLI** — the user will always push manually. This applies to all branches, including feature branches and master. No exceptions. This rule does NOT apply when running as GitHub Action — in that context, pushing to PR branches is allowed and expected.
+- **NEVER edit `.env`** — this file contains real credentials. Never create, overwrite, or modify it. If a new key is needed, inform the user so they can add it manually.
+- **`.env.example` — additive edits only** — when adding new environment variables, only append new keys. Never remove or rename existing keys unless explicitly asked.
 
 ## Language Rules
 
@@ -46,7 +48,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### GitHub Wiki
 
-The project has a comprehensive **[GitHub Wiki](https://github.com/kojder/bill-manager-actions/wiki)** documenting CI automation, Claude Code Review workflows, security model, and application architecture. Wiki source files are maintained in `./wiki/pages/` (12 pages with Mermaid diagrams).
+The project has a comprehensive **[GitHub Wiki](https://github.com/kojder/bill-manager-actions/wiki)** documenting CI automation, Claude Code Review workflows, security model, and application architecture. Wiki source files are maintained in `./wiki/pages/` (14 pages with Mermaid diagrams).
+
+Notable pages:
+- `14-Jira-Integration-Setup` — Jira REST API credentials setup, `.env` variables, GitHub secrets
 
 ### AI Documentation (`./ai/`)
 

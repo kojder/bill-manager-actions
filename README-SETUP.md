@@ -61,6 +61,21 @@ All configuration is in [application.properties](src/main/resources/application.
 
 For environment-specific config, create `application-dev.properties` or use environment variables.
 
+## Optional: Jira Integration
+
+To enable Jira connectivity (for PR enrichment with ticket context), add these variables to `.env`:
+
+```bash
+JIRA_BASE_URL=https://your-domain.atlassian.net
+JIRA_USER_EMAIL=your-email@example.com
+JIRA_API_TOKEN=your-api-token-here
+JIRA_PROJECT_KEY=BM
+```
+
+Full setup guide: [wiki/14-Jira-Integration-Setup](wiki/pages/14-Jira-Integration-Setup.md) — token creation, connection verification, GitHub secrets.
+
+---
+
 ## Troubleshoties
 
 ### Error: "OpenAI API key must be set"

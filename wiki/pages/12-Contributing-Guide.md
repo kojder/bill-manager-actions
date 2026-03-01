@@ -40,9 +40,11 @@ No database required — the application uses in-memory storage (ConcurrentHashM
 git clone git@github.com:kojder/bill-manager-actions.git
 cd bill-manager-actions
 
-# Copy environment file and add your Groq API key
+# Copy environment file and fill in your credentials
 cp .env.example .env
-# Edit .env: GROQ_API_KEY=gsk_...
+# Required: GROQ_API_KEY=gsk_...
+# Optional (for Jira): JIRA_BASE_URL, JIRA_USER_EMAIL, JIRA_API_TOKEN, JIRA_PROJECT_KEY
+# See: wiki/14-Jira-Integration-Setup for full Jira setup instructions
 
 # Verify the build
 ./mvnw clean compile

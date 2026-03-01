@@ -58,6 +58,7 @@ The CI/CD automation is the star of this project. The application exists to prov
 |------|-------------------|
 | [Application Architecture](11-Application-Architecture) | Spring Boot app: packages, flow, REST API, data models |
 | [Contributing Guide](12-Contributing-Guide) | Setup, branch naming, PR workflow, reading review artifacts |
+| [Jira Integration Setup](14-Jira-Integration-Setup) | Obtaining API token, configuring `.env`, adding GitHub secrets |
 
 ---
 
