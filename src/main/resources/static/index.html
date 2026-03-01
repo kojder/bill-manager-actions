@@ -93,6 +93,7 @@
         + '<span>ID: ' + data.id.substring(0, 8) + '&hellip;</span>'
         + '<span>' + formatTimestamp(data.analyzedAt) + '</span>'
         + '</footer>'
+        + '<a href="/api/bills/' + data.id + '/export/csv" role="button" class="outline secondary" download>Download CSV</a>'
         + '</article>';
     }
 
