@@ -8,6 +8,8 @@ concurrency:
   group: ci-${{ github.head_ref }}
   cancel-in-progress: true
 
+permissions: {}
+
 jobs:
   enrich-description:
     name: Enrich PR Description
@@ -15,11 +17,13 @@ jobs:
       github.event.action == 'opened' ||
       (github.event.action == 'labeled' && github.event.label.name == 'rerun')
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Extract task number and Jira key from branch name
         id: extract
@@ -49,154 +53,12 @@ jobs:
           JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
           JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
           JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
-        run: |
-          SOURCE="${{ steps.extract.outputs.source }}"
-          TASK_NUM="${{ steps.extract.outputs.task_number }}"
-          JIRA_KEY="${{ steps.extract.outputs.jira_key }}"
-          PR_NUM="${{ github.event.pull_request.number }}"
-          BRANCH="${{ github.head_ref }}"
-
-          CHANGED_FILES=$(gh pr diff "$PR_NUM" --name-only 2>/dev/null || echo "")
-
-          cat > /tmp/jira_parse.py << 'PYEOF'
-          import json, os
-
-          with open('/tmp/jira_response.json') as f:
-              issue = json.load(f)
-
-          key = issue.get('key', '')
-          base_url = os.environ.get('JIRA_BASE_URL', '').rstrip('/')
-          fields = issue.get('fields', {})
-          summary = fields.get('summary', '')
-          jira_url = f"{base_url}/browse/{key}"
-
-          def extract_text(node):
-              if not isinstance(node, dict):
-                  return ''
-              t = node.get('type', '')
-              if t == 'text':
-                  return node.get('text', '')
-              if t == 'hardBreak':
-                  return '\n'
-              text = ''.join(extract_text(c) for c in node.get('content', []))
-              if t in ('paragraph', 'heading'):
-                  text += '\n'
-              elif t == 'listItem':
-                  text = '- ' + text.strip() + '\n'
-              return text
-
-          description_text = ''
-          desc = fields.get('description')
-          if desc and isinstance(desc, dict):
-              description_text = extract_text(desc).strip()
-
-          lines = [f"### [{key}]({jira_url}): {summary}", ""]
-          if description_text:
-              lines += ["**Description:**", description_text, ""]
-
-          with open('/tmp/jira_header.md', 'w') as f:
-              f.write('\n'.join(lines))
-
-          print(f"Jira: {key} - {summary}")
-          PYEOF
-
-          if [ "$SOURCE" = "tasks" ]; then
-            TASKS_FILE="./ai/tasks.md"
-
-            if [ ! -f "$TASKS_FILE" ]; then
-              cat > /tmp/task_content.md <<EOF
-          > **Warning:** \`ai/tasks.md\` not found. Cannot auto-populate task reference.
-          EOF
-              echo "has_content=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-
-            SECTION=$(awk '
-              /^### Task '"$TASK_NUM"':/ { found=1; next }
-              found && /^### Task [0-9]+:/ { found=0 }
-              found && /^---$/ { found=0 }
-              found && /^## / { found=0 }
-              found { print }
-            ' "$TASKS_FILE")
-
-            if [ -z "$SECTION" ]; then
-              cat > /tmp/task_content.md <<EOF
-          > **Warning:** Task $TASK_NUM not found in \`ai/tasks.md\`.
-          EOF
-              echo "has_content=true" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-
-            TITLE=$(grep -oP "^### Task ${TASK_NUM}: \K.*" "$TASKS_FILE" | sed 's/ ✅ COMPLETED//')
-            DESCRIPTION=$(echo "$SECTION" | awk '/^\*\*Description:\*\*/{flag=1; sub(/\*\*Description:\*\* */,""); print; next} flag && /^\*\*/{flag=0} flag{print}')
-            REVIEW_RULES=$(echo "$SECTION" | grep -oP '^\*\*Claude review:\*\* \K.*' || true)
-            EXPECTED=$(echo "$SECTION" | awk '/^\*\*Expected review points:\*\*/{flag=1; next} flag && /^- \[/{print} flag && !/^- \[/ && !/^$/{flag=0}')
-
-            {
-              echo "### Task ${TASK_NUM}: ${TITLE}"
-              echo ""
-              if [ -n "$DESCRIPTION" ]; then
-                echo "**Description:** ${DESCRIPTION}"
-                echo ""
-              fi
-              if [ -n "$CHANGED_FILES" ]; then
-                echo "**Changed files (from PR diff):**"
-                echo "$CHANGED_FILES" | sed 's/^/- /'
-                echo ""
-              fi
-              if [ -n "$REVIEW_RULES" ]; then
-                echo "**Claude review:** ${REVIEW_RULES}"
-                echo ""
-              fi
-              if [ -n "$EXPECTED" ]; then
-                echo "**Expected review points:**"
-                echo "${EXPECTED}"
-              fi
-            } > /tmp/task_content.md
-            echo "has_content=true" >> "$GITHUB_OUTPUT"
-
-          elif [ "$SOURCE" = "jira" ]; then
-            if [ -z "$JIRA_BASE_URL" ] || [ -z "$JIRA_USER_EMAIL" ] || [ -z "$JIRA_API_TOKEN" ]; then
-              echo "::warning::Jira secrets not configured. Skipping Jira enrichment."
-              echo "has_content=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-
-            HTTP_CODE=$(curl -s -o /tmp/jira_response.json -w "%{http_code}" \
-              -u "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
-              "$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY?fields=summary,description")
-
-            if [ "$HTTP_CODE" -ne 200 ]; then
-              echo "::warning::Jira API returned HTTP $HTTP_CODE for $JIRA_KEY. Skipping."
-              echo "has_content=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-
-            python3 /tmp/jira_parse.py
-
-            if [ $? -ne 0 ]; then
-              echo "::warning::Failed to parse Jira response."
-              echo "has_content=false" >> "$GITHUB_OUTPUT"
-              exit 0
-            fi
-
-            {
-              cat /tmp/jira_header.md
-              if [ -n "$CHANGED_FILES" ]; then
-                echo "**Changed files (from PR diff):**"
-                echo "$CHANGED_FILES" | sed 's/^/- /'
-              fi
-            } > /tmp/task_content.md
-            echo "has_content=true" >> "$GITHUB_OUTPUT"
-
-          else
-            cat > /tmp/task_content.md <<EOF
-          > **Warning:** No task number or Jira key detected in branch name \`${BRANCH}\`.
-          > Expected format: \`feat/task-{N}-description\` or \`feat/PROJ-1234-description\`.
-          > Fill in the Task / Issue Reference section manually if needed.
-          EOF
-            echo "has_content=true" >> "$GITHUB_OUTPUT"
-          fi
+          SOURCE: ${{ steps.extract.outputs.source }}
+          TASK_NUM: ${{ steps.extract.outputs.task_number }}
+          JIRA_KEY: ${{ steps.extract.outputs.jira_key }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          BRANCH: ${{ github.head_ref }}
+        run: bash .github/scripts/build-task-content.sh
 
       - name: Update PR description
         if: steps.build.outputs.has_content == 'true'
@@ -235,15 +97,15 @@ jobs:
       needs.enrich-description.result != 'failure' &&
       (github.event.action != 'labeled' || github.event.label.name == 'rerun')
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: maven
+        uses: ./.github/actions/setup-java-maven
 
       - name: Check formatting (Spotless)
         run: ./mvnw spotless:check
@@ -256,15 +118,15 @@ jobs:
     needs: checkstyle
     if: always() && needs.checkstyle.result == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-          cache: maven
+        uses: ./.github/actions/setup-java-maven
 
       - name: Run Tests
         run: ./mvnw test
@@ -274,6 +136,7 @@ jobs:
     needs: test
     if: always() && needs.test.result == 'success'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: write
@@ -379,149 +242,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EXEC_FILE: ${{ steps.claude_review.outputs.execution_file }}
           PR_NUM: ${{ github.event.pull_request.number }}
-        run: |
-          if [ ! -f "$EXEC_FILE" ]; then
-            echo "Execution file not found, skipping"
-            exit 0
-          fi
-
-          jq -r '.[-1] | select(.type == "result") | .result // empty' \
-            "$EXEC_FILE" > /tmp/review.md
-
-          if [ ! -s /tmp/review.md ]; then
-            echo "No review result found in execution file"
-            exit 0
-          fi
-
-          # Signature present in every full structured report from /spring-java-reviewer
-          FULL_REPORT_MARKER="| Critical |"
-
-          # Check for existing Claude comment
-          CLAUDE_COMMENT=$(gh api "repos/${{ github.repository }}/issues/${PR_NUM}/comments" \
-            --jq '[.[] | select(.user.login == "claude[bot]")] | .[0] // empty')
-
-          if [ -n "$CLAUDE_COMMENT" ]; then
-            EXISTING_BODY=$(echo "$CLAUDE_COMMENT" | jq -r '.body')
-            if echo "$EXISTING_BODY" | grep -qF "$FULL_REPORT_MARKER"; then
-              echo "Full report already present in Claude comment, skipping"
-              exit 0
-            fi
-            # Comment exists but is missing the full report — patch it
-            COMMENT_ID=$(echo "$CLAUDE_COMMENT" | jq -r '.id')
-            {
-              echo "$EXISTING_BODY"
-              echo ""
-              echo "---"
-              echo ""
-              echo "## 📋 Full Spring Java Reviewer Report"
-              echo ""
-              cat /tmp/review.md
-            } > /tmp/updated_body.md
-            python3 -c 'import json; body=open("/tmp/updated_body.md").read(); json.dump({"body": body}, open("/tmp/patch_payload.json", "w"))'
-            gh api "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" \
-              -X PATCH \
-              --input /tmp/patch_payload.json \
-              --silent \
-              && echo "Fallback: appended full report to existing comment $COMMENT_ID" \
-              || echo "Warning: failed to update existing comment"
-            exit 0
-          fi
-
-          # No existing comment — get changed file paths and post via Reviews API
-          gh pr diff "$PR_NUM" --name-only > /tmp/changed_files.txt
-
-          # Get HEAD commit SHA for inline comments
-          COMMIT_SHA=$(gh pr view "$PR_NUM" --json headRefOid --jq '.headRefOid')
-
-          # Parse findings and create inline comments + summary via GitHub PR Review API
-          python3 << 'PYEOF'
-          import json, re, os
-
-          with open("/tmp/review.md") as f:
-              review = f.read()
-          with open("/tmp/changed_files.txt") as f:
-              changed_files = [l.strip() for l in f if l.strip()]
-
-          commit_sha = os.environ.get("COMMIT_SHA", "")
-
-          # Step 1: Find finding headers with everything up to "- **Problem:**"
-          header_pat = re.compile(
-              r'\*\*\[([WC])-(\d+)\]\s*(.*?)\*\*(.*?)(?=-\s*\*\*Problem:\*\*)',
-              re.DOTALL
-          )
-          # Step 2: Extract path:line from header or context text
-          path_pat = re.compile(
-              r'(?:`([^`]+?):(\d+)(?:-\d+)?`|(\S+\.java)\s+line\s+(\d+))'
-          )
-
-          def resolve_path(short_path):
-              for cf in changed_files:
-                  if cf.endswith(short_path) or cf.endswith("/" + short_path):
-                      return cf
-              return None
-
-          findings = []
-          for m in header_pat.finditer(review):
-              severity, num = m.group(1), m.group(2)
-              title_text = m.group(3).strip()
-              after_bold = m.group(4)
-
-              # Search for path in title or after bold
-              pm = path_pat.search(title_text + " " + after_bold)
-              if not pm:
-                  continue
-              short_path = pm.group(1) or pm.group(3)
-              line = int(pm.group(2) or pm.group(4))
-
-              full_path = resolve_path(short_path)
-              if not full_path:
-                  continue
-
-              # Clean title: remove path reference
-              clean_title = re.sub(r'\s*[—\-]+\s*`[^`]+`\s*$', '', title_text).strip()
-
-              # Extract body until next finding or section
-              body_start = m.end()
-              next_end = len(review)
-              for end_pat in [r'\n\*\*\[(?:W|C)-\d+\]', r'\n---', r'\n### ']:
-                  em = re.search(end_pat, review[body_start:])
-                  if em:
-                      next_end = min(next_end, body_start + em.start())
-              body = review[body_start:next_end].strip()
-              label = "Critical" if severity == "C" else "Warning"
-              findings.append({
-                  "path": full_path,
-                  "line": line,
-                  "body": f"**[{severity}-{num}] {clean_title}** ({label})\n\n{body}"
-              })
-
-          # Build PR review payload
-          payload = {"event": "COMMENT", "body": review}
-          if commit_sha:
-              payload["commit_id"] = commit_sha
-          if findings:
-              payload["comments"] = [
-                  {"path": f["path"], "line": f["line"], "body": f["body"]}
-                  for f in findings
-              ]
-
-          with open("/tmp/review_payload.json", "w") as f:
-              json.dump(payload, f)
-
-          print(f"Parsed {len(findings)} inline comment(s) from review text")
-          for f in findings:
-              print(f"  - {f['path']}:{f['line']}")
-          PYEOF
-
-          # Post the review (summary + inline comments in one API call)
-          gh api "repos/${{ github.repository }}/pulls/${PR_NUM}/reviews" \
-            --input /tmp/review_payload.json \
-            --silent \
-            && echo "Fallback: review posted with $(jq '.comments | length' /tmp/review_payload.json) inline comment(s)" \
-            || {
-              echo "Review API failed, falling back to simple comment"
-              gh pr comment "$PR_NUM" --body-file /tmp/review.md
-            }
+        run: bash .github/scripts/post-review-fallback.sh
 
       - name: Token Usage Summary
         if: always() && steps.claude_review.outputs.execution_file
@@ -692,6 +413,7 @@ jobs:
     needs: [enrich-description, checkstyle, test, claude-review]
     if: always() && github.event.action == 'labeled' && github.event.label.name == 'rerun'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       pull-requests: write
     steps:
