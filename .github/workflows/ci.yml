@@ -611,8 +611,27 @@ jobs:
               && echo "Token table appended to Claude comment $COMMENT_ID" \
               || { echo "Warning: patch failed, posting separate comment"; gh pr comment "$PR_NUM" --body-file /tmp/token_table.md; }
           else
-            echo "No Claude comment found, posting token table as separate comment"
-            gh pr comment "$PR_NUM" --body-file /tmp/token_table.md
+            FALLBACK_REVIEW=$(gh api "repos/${{ github.repository }}/pulls/${PR_NUM}/reviews" \
+              --jq '[.[] | select(.user.login == "github-actions[bot]") | select(.body != "")] | last // empty')
+            if [ -n "$FALLBACK_REVIEW" ]; then
+              REVIEW_ID=$(echo "$FALLBACK_REVIEW" | jq -r '.id')
+              EXISTING_BODY=$(echo "$FALLBACK_REVIEW" | jq -r '.body')
+              {
+                echo "$EXISTING_BODY"
+                echo ""
+                echo "---"
+                echo ""
+                cat /tmp/token_table.md
+              } > /tmp/review_with_tokens.md
+              python3 -c 'import json; body=open("/tmp/review_with_tokens.md").read(); json.dump({"body": body}, open("/tmp/review_patch.json", "w"))'
+              gh api "repos/${{ github.repository }}/pulls/${PR_NUM}/reviews/$REVIEW_ID" \
+                -X PUT --input /tmp/review_patch.json --silent \
+                && echo "Token table appended to fallback PR review $REVIEW_ID" \
+                || { echo "Warning: review patch failed, posting separate comment"; gh pr comment "$PR_NUM" --body-file /tmp/token_table.md; }
+            else
+              echo "No Claude comment or fallback review found, posting token table as separate comment"
+              gh pr comment "$PR_NUM" --body-file /tmp/token_table.md
+            fi
           fi
 
           mkdir -p reports
