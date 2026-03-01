@@ -354,28 +354,33 @@
 
 ---
 
-### Task 12: PR Enrich — Jira Integration
+### Task 12: PR Enrich — Jira Integration ✅ COMPLETED
 
-**Description:** Extend the PR Enrich workflow with Jira integration. Fetch ticket description via Jira REST API based on ticket key extracted from branch name (e.g., `feat/PROJ-1234-description`). Replace a dedicated placeholder in PR body with Jira ticket title, description, acceptance criteria, and a direct link to the ticket.
+**Status:** Merged to master (PR #29)
+
+**Description:** Extend the PR Enrich workflow with Jira integration. Fetch ticket description via Jira REST API based on ticket key extracted from branch name (e.g., `feat/PROJ-1234-description`). Fill the shared `<!-- TASK_PLACEHOLDER -->` with Jira ticket title, description, and a direct link to the ticket. Changed files section always taken from actual PR diff (both sources).
 
 **Scope:**
-- Modified: `.github/workflows/ci.yml` — add Jira API step to `enrich-description` job (conditional, runs only when Jira key detected)
-- Modified: `.github/pull_request_template.md` — add `<!-- JIRA_PLACEHOLDER -->` marker
-- New: GitHub repository secrets: `JIRA_BASE_URL`, `JIRA_API_TOKEN`, `JIRA_USER_EMAIL`
+- Modified: `.github/workflows/ci.yml` — extended `enrich-description` job: Extract step detects Jira key, Build step handles tasks.md OR Jira API, scope from PR diff for both sources
+- Modified: `.github/pull_request_template.md` — renamed section to "Task / Issue Reference", updated comment to document both sources
+- GitHub repository secrets configured: `JIRA_BASE_URL`, `JIRA_API_TOKEN`, `JIRA_USER_EMAIL`
 
 **Claude review:** **CLAUDE.md Config Module review rules** (secrets handling)
 
 **Expected review points:**
-- [ ] Jira API token stored as GitHub secret, never hardcoded
-- [ ] Graceful fallback when Jira API is unavailable or ticket not found
-- [ ] No sensitive data (API token, email) exposed in workflow logs
-- [ ] Branch name regex handles both task-N and PROJ-1234 patterns
+- [x] Jira API token stored as GitHub secret, never hardcoded
+- [x] Graceful fallback when Jira API is unavailable or ticket not found
+- [x] No sensitive data (API token, email) exposed in workflow logs
+- [x] Branch name regex handles both task-N and PROJ-1234 patterns
 
 **Implementation notes:**
-- Jira REST API: `GET /rest/api/3/issue/{issueKey}` with Basic Auth (email + API token)
-- Extract fields: `summary`, `description`, `acceptance criteria` (custom field)
-- Consider reusable workflow (`workflow_call`) for use across multiple repositories
-- Rate limiting: Jira Cloud API has rate limits — single call per PR is fine
+- Single `<!-- TASK_PLACEHOLDER -->` filled from tasks.md (source=tasks) OR Jira API (source=jira)
+- Jira key detection only when no `task-N` found (task-N takes priority)
+- Jira REST API: `GET /rest/api/3/issue/{issueKey}?fields=summary,description` with Basic Auth
+- ADF description parsed via Python recursive extractor (paragraph, heading, listItem, hardBreak)
+- Scope replaced by `gh pr diff --name-only` (PR actual changed files) for both sources
+- Python parser written to `/tmp/jira_parse.py` before if/else (heredoc indentation safety)
+- Curl stores response to `/tmp/jira_response.json` — no sensitive data to stdout/logs
 
 **Size:** M
 
@@ -633,7 +638,7 @@
 | CLAUDE.md review section | Tasks | Key review points |
 |--------------------------|-------|-------------------|
 | Global review scope | 2, 3, 5, 10, 11, 13, 14, 16, 17, 18, 19 | Architecture, Records, REST conventions, workflow quality, CI security, UI, logging |
-| Config Module rules | 4, 12 | Secrets, env separation, configurable URLs, Jira API secrets |
+| Config Module rules | 4, 12 | Secrets, env separation, configurable URLs, Jira API secrets (source detection, graceful fallback) |
 | Upload Module rules | 6, 7, 8, 15 | MIME validation, size limits, path traversal, preprocessing, PDF conversion |
 | AI Module rules | 9, 15, 18 | Timeout, retry, exponential backoff, structured output, multi-image, category enum |
 
