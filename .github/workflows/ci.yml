@@ -592,13 +592,57 @@ jobs:
             printf "| Est. cost | \$%.2f |\n" "$COST"
           } | tee /tmp/token_table.md >> "$GITHUB_STEP_SUMMARY"
 
-          gh pr comment "$PR_NUM" --body-file /tmp/token_table.md
+          LATEST_CLAUDE=$(gh api "repos/${{ github.repository }}/issues/${PR_NUM}/comments" \
+            --jq '[.[] | select(.user.login == "claude[bot]")] | last // empty')
+
+          if [ -n "$LATEST_CLAUDE" ]; then
+            COMMENT_ID=$(echo "$LATEST_CLAUDE" | jq -r '.id')
+            EXISTING_BODY=$(echo "$LATEST_CLAUDE" | jq -r '.body')
+            {
+              echo "$EXISTING_BODY"
+              echo ""
+              echo "---"
+              echo ""
+              cat /tmp/token_table.md
+            } > /tmp/claude_with_tokens.md
+            python3 -c 'import json; body=open("/tmp/claude_with_tokens.md").read(); json.dump({"body": body}, open("/tmp/token_patch.json", "w"))'
+            gh api "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" \
+              -X PATCH --input /tmp/token_patch.json --silent \
+              && echo "Token table appended to Claude comment $COMMENT_ID" \
+              || { echo "Warning: patch failed, posting separate comment"; gh pr comment "$PR_NUM" --body-file /tmp/token_table.md; }
+          else
+            echo "No Claude comment found, posting token table as separate comment"
+            gh pr comment "$PR_NUM" --body-file /tmp/token_table.md
+          fi
 
           mkdir -p reports
           echo "$METRICS" | jq --argjson pr "$PR_NUM" '. + {pr: $pr}' \
             > "reports/pr-${PR_NUM}-usage.json"
 
-          echo "✅ Token usage summary written to Step Summary, PR comment, and reports/pr-${PR_NUM}-usage.json"
+          echo "✅ Token usage summary written to Step Summary, Claude comment, and reports/pr-${PR_NUM}-usage.json"
+
+      - name: Minimize Outdated Reviews
+        if: always() && steps.claude_review.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+        run: |
+          ALL_CLAUDE=$(gh api "repos/${{ github.repository }}/issues/${PR_NUM}/comments" \
+            --jq '[.[] | select(.user.login == "claude[bot]") | {id: .id, node_id: .node_id}]')
+
+          COUNT=$(echo "$ALL_CLAUDE" | jq 'length')
+          if [ "$COUNT" -le 1 ]; then
+            echo "Only $COUNT Claude comment(s), nothing to minimize"
+            exit 0
+          fi
+
+          echo "Found $COUNT Claude comments — minimizing ${COUNT-1} outdated one(s)"
+          GQL='mutation($id:ID!){minimizeComment(input:{subjectId:$id,classifier:OUTDATED}){minimizedComment{isMinimized}}}'
+          echo "$ALL_CLAUDE" | jq -r '.[:-1][].node_id' | while read -r NODE_ID; do
+            gh api graphql -f query="$GQL" -f id="$NODE_ID" --silent \
+              && echo "Minimized $NODE_ID" \
+              || echo "Warning: could not minimize $NODE_ID"
+          done
 
       - name: Upload usage metrics
         if: always() && (hashFiles('reports/**') != '')
