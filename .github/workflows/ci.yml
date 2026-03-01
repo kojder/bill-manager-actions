@@ -17,93 +17,182 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Extract task number from branch name
+      - name: Extract task number and Jira key from branch name
         id: extract
         run: |
           BRANCH="${{ github.head_ref }}"
           if [[ "$BRANCH" =~ task-([0-9]+) ]]; then
             echo "task_number=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+            echo "jira_key=" >> "$GITHUB_OUTPUT"
+            echo "source=tasks" >> "$GITHUB_OUTPUT"
             echo "Found task number: ${BASH_REMATCH[1]} in branch: $BRANCH"
-          else
-            echo "No task number found in branch: $BRANCH"
+          elif [[ "$BRANCH" =~ ([A-Z][A-Z0-9]*-[0-9]+) ]]; then
             echo "task_number=" >> "$GITHUB_OUTPUT"
+            echo "jira_key=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+            echo "source=jira" >> "$GITHUB_OUTPUT"
+            echo "Found Jira key: ${BASH_REMATCH[1]} in branch: $BRANCH"
+          else
+            echo "No task number or Jira key found in branch: $BRANCH"
+            echo "task_number=" >> "$GITHUB_OUTPUT"
+            echo "jira_key=" >> "$GITHUB_OUTPUT"
+            echo "source=none" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build task content
         id: build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
         run: |
+          SOURCE="${{ steps.extract.outputs.source }}"
           TASK_NUM="${{ steps.extract.outputs.task_number }}"
+          JIRA_KEY="${{ steps.extract.outputs.jira_key }}"
+          PR_NUM="${{ github.event.pull_request.number }}"
           BRANCH="${{ github.head_ref }}"
 
-          if [ -z "$TASK_NUM" ]; then
-            cat > /tmp/task_content.md <<EOF
-          > **Warning:** No task number detected in branch name \`${BRANCH}\`.
-          > Expected format: \`feat/task-{N}-description\` or \`chore/task-{N}-description\`.
-          > Fill in the Task Reference section manually if needed.
-          EOF
-            echo "has_content=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          CHANGED_FILES=$(gh pr diff "$PR_NUM" --name-only 2>/dev/null || echo "")
 
-          TASKS_FILE="./ai/tasks.md"
+          cat > /tmp/jira_parse.py << 'PYEOF'
+          import json, os
 
-          if [ ! -f "$TASKS_FILE" ]; then
-            cat > /tmp/task_content.md <<EOF
+          with open('/tmp/jira_response.json') as f:
+              issue = json.load(f)
+
+          key = issue.get('key', '')
+          base_url = os.environ.get('JIRA_BASE_URL', '').rstrip('/')
+          fields = issue.get('fields', {})
+          summary = fields.get('summary', '')
+          jira_url = f"{base_url}/browse/{key}"
+
+          def extract_text(node):
+              if not isinstance(node, dict):
+                  return ''
+              t = node.get('type', '')
+              if t == 'text':
+                  return node.get('text', '')
+              if t == 'hardBreak':
+                  return '\n'
+              text = ''.join(extract_text(c) for c in node.get('content', []))
+              if t in ('paragraph', 'heading'):
+                  text += '\n'
+              elif t == 'listItem':
+                  text = '- ' + text.strip() + '\n'
+              return text
+
+          description_text = ''
+          desc = fields.get('description')
+          if desc and isinstance(desc, dict):
+              description_text = extract_text(desc).strip()
+
+          lines = [f"### [{key}]({jira_url}): {summary}", ""]
+          if description_text:
+              lines += ["**Description:**", description_text, ""]
+
+          with open('/tmp/jira_header.md', 'w') as f:
+              f.write('\n'.join(lines))
+
+          print(f"Jira: {key} - {summary}")
+          PYEOF
+
+          if [ "$SOURCE" = "tasks" ]; then
+            TASKS_FILE="./ai/tasks.md"
+
+            if [ ! -f "$TASKS_FILE" ]; then
+              cat > /tmp/task_content.md <<EOF
           > **Warning:** \`ai/tasks.md\` not found. Cannot auto-populate task reference.
           EOF
-            echo "has_content=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+              echo "has_content=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
 
-          SECTION=$(awk '
-            /^### Task '"$TASK_NUM"':/ { found=1; next }
-            found && /^### Task [0-9]+:/ { found=0 }
-            found && /^---$/ { found=0 }
-            found && /^## / { found=0 }
-            found { print }
-          ' "$TASKS_FILE")
+            SECTION=$(awk '
+              /^### Task '"$TASK_NUM"':/ { found=1; next }
+              found && /^### Task [0-9]+:/ { found=0 }
+              found && /^---$/ { found=0 }
+              found && /^## / { found=0 }
+              found { print }
+            ' "$TASKS_FILE")
 
-          if [ -z "$SECTION" ]; then
-            cat > /tmp/task_content.md <<EOF
+            if [ -z "$SECTION" ]; then
+              cat > /tmp/task_content.md <<EOF
           > **Warning:** Task $TASK_NUM not found in \`ai/tasks.md\`.
           EOF
+              echo "has_content=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            TITLE=$(grep -oP "^### Task ${TASK_NUM}: \K.*" "$TASKS_FILE" | sed 's/ ✅ COMPLETED//')
+            DESCRIPTION=$(echo "$SECTION" | awk '/^\*\*Description:\*\*/{flag=1; sub(/\*\*Description:\*\* */,""); print; next} flag && /^\*\*/{flag=0} flag{print}')
+            REVIEW_RULES=$(echo "$SECTION" | grep -oP '^\*\*Claude review:\*\* \K.*' || true)
+            EXPECTED=$(echo "$SECTION" | awk '/^\*\*Expected review points:\*\*/{flag=1; next} flag && /^- \[/{print} flag && !/^- \[/ && !/^$/{flag=0}')
+
+            {
+              echo "### Task ${TASK_NUM}: ${TITLE}"
+              echo ""
+              if [ -n "$DESCRIPTION" ]; then
+                echo "**Description:** ${DESCRIPTION}"
+                echo ""
+              fi
+              if [ -n "$CHANGED_FILES" ]; then
+                echo "**Changed files (from PR diff):**"
+                echo "$CHANGED_FILES" | sed 's/^/- /'
+                echo ""
+              fi
+              if [ -n "$REVIEW_RULES" ]; then
+                echo "**Claude review:** ${REVIEW_RULES}"
+                echo ""
+              fi
+              if [ -n "$EXPECTED" ]; then
+                echo "**Expected review points:**"
+                echo "${EXPECTED}"
+              fi
+            } > /tmp/task_content.md
             echo "has_content=true" >> "$GITHUB_OUTPUT"
-            exit 0
+
+          elif [ "$SOURCE" = "jira" ]; then
+            if [ -z "$JIRA_BASE_URL" ] || [ -z "$JIRA_USER_EMAIL" ] || [ -z "$JIRA_API_TOKEN" ]; then
+              echo "::warning::Jira secrets not configured. Skipping Jira enrichment."
+              echo "has_content=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            HTTP_CODE=$(curl -s -o /tmp/jira_response.json -w "%{http_code}" \
+              -u "$JIRA_USER_EMAIL:$JIRA_API_TOKEN" \
+              "$JIRA_BASE_URL/rest/api/3/issue/$JIRA_KEY?fields=summary,description")
+
+            if [ "$HTTP_CODE" -ne 200 ]; then
+              echo "::warning::Jira API returned HTTP $HTTP_CODE for $JIRA_KEY. Skipping."
+              echo "has_content=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            python3 /tmp/jira_parse.py
+
+            if [ $? -ne 0 ]; then
+              echo "::warning::Failed to parse Jira response."
+              echo "has_content=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+
+            {
+              cat /tmp/jira_header.md
+              if [ -n "$CHANGED_FILES" ]; then
+                echo "**Changed files (from PR diff):**"
+                echo "$CHANGED_FILES" | sed 's/^/- /'
+              fi
+            } > /tmp/task_content.md
+            echo "has_content=true" >> "$GITHUB_OUTPUT"
+
+          else
+            cat > /tmp/task_content.md <<EOF
+          > **Warning:** No task number or Jira key detected in branch name \`${BRANCH}\`.
+          > Expected format: \`feat/task-{N}-description\` or \`feat/PROJ-1234-description\`.
+          > Fill in the Task / Issue Reference section manually if needed.
+          EOF
+            echo "has_content=true" >> "$GITHUB_OUTPUT"
           fi
-
-          TITLE=$(grep -oP "^### Task ${TASK_NUM}: \K.*" "$TASKS_FILE" | sed 's/ ✅ COMPLETED//')
-
-          DESCRIPTION=$(echo "$SECTION" | awk '/^\*\*Description:\*\*/{flag=1; sub(/\*\*Description:\*\* */,""); print; next} flag && /^\*\*/{flag=0} flag{print}')
-
-          SCOPE=$(echo "$SECTION" | awk '/^\*\*Scope:\*\*/{flag=1; next} flag && /^- /{print} flag && !/^- / && !/^$/{flag=0}')
-
-          REVIEW_RULES=$(echo "$SECTION" | grep -oP '^\*\*Claude review:\*\* \K.*' || true)
-
-          EXPECTED=$(echo "$SECTION" | awk '/^\*\*Expected review points:\*\*/{flag=1; next} flag && /^- \[/{print} flag && !/^- \[/ && !/^$/{flag=0}')
-
-          {
-            echo "### Task ${TASK_NUM}: ${TITLE}"
-            echo ""
-            if [ -n "$DESCRIPTION" ]; then
-              echo "**Description:** ${DESCRIPTION}"
-              echo ""
-            fi
-            if [ -n "$SCOPE" ]; then
-              echo "**Scope:**"
-              echo "${SCOPE}"
-              echo ""
-            fi
-            if [ -n "$REVIEW_RULES" ]; then
-              echo "**Claude review:** ${REVIEW_RULES}"
-              echo ""
-            fi
-            if [ -n "$EXPECTED" ]; then
-              echo "**Expected review points:**"
-              echo "${EXPECTED}"
-            fi
-          } > /tmp/task_content.md
-
-          echo "has_content=true" >> "$GITHUB_OUTPUT"
 
       - name: Update PR description
         if: steps.build.outputs.has_content == 'true'

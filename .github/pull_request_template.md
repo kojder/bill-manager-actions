@@ -2,10 +2,12 @@
 
 <!-- Summary of changes and motivation -->
 
-## Task Reference
+## Task / Issue Reference
 
-<!-- Auto-populated from ./ai/tasks.md by PR Enrich workflow (based on branch name).
-     Requires branch naming convention: feat/task-{N}-description or chore/task-{N}-description.
+<!-- Auto-populated by PR Enrich workflow based on branch name:
+     - feat/task-{N}-description → reads from ./ai/tasks.md
+     - feat/PROJ-1234-description → fetches from Jira REST API
+     Changed files are always taken from the actual PR diff.
      You can also fill this manually if the branch name doesn't match. -->
 
 <!-- TASK_PLACEHOLDER -->
