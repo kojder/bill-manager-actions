@@ -376,18 +376,6 @@ jobs:
           EXEC_FILE: ${{ steps.claude_review.outputs.execution_file }}
           PR_NUM: ${{ github.event.pull_request.number }}
         run: |
-          # Skip if Claude already posted
-          REVIEW_COMMENTS=$(gh api "repos/${{ github.repository }}/issues/${PR_NUM}/comments" \
-            --jq '[.[] | select(
-              .user.login == "claude" or
-              (.body | test("Code Review|Verdict|APPROVE|REQUEST_CHANGES"))
-            )] | length')
-
-          if [ "$REVIEW_COMMENTS" -gt 0 ]; then
-            echo "Review already posted ($REVIEW_COMMENTS comment(s)), skipping fallback"
-            exit 0
-          fi
-
           if [ ! -f "$EXEC_FILE" ]; then
             echo "Execution file not found, skipping"
             exit 0
@@ -401,7 +389,41 @@ jobs:
             exit 0
           fi
 
-          # Get changed file paths from PR diff for path resolution
+          # Signature present in every full structured report from /spring-java-reviewer
+          FULL_REPORT_MARKER="| Critical |"
+
+          # Check for existing Claude comment
+          CLAUDE_COMMENT=$(gh api "repos/${{ github.repository }}/issues/${PR_NUM}/comments" \
+            --jq '[.[] | select(.user.login == "claude[bot]")] | .[0] // empty')
+
+          if [ -n "$CLAUDE_COMMENT" ]; then
+            EXISTING_BODY=$(echo "$CLAUDE_COMMENT" | jq -r '.body')
+            if echo "$EXISTING_BODY" | grep -qF "$FULL_REPORT_MARKER"; then
+              echo "Full report already present in Claude comment, skipping"
+              exit 0
+            fi
+            # Comment exists but is missing the full report — patch it
+            COMMENT_ID=$(echo "$CLAUDE_COMMENT" | jq -r '.id')
+            {
+              echo "$EXISTING_BODY"
+              echo ""
+              echo "---"
+              echo ""
+              echo "## 📋 Full Spring Java Reviewer Report"
+              echo ""
+              cat /tmp/review.md
+            } > /tmp/updated_body.md
+            python3 -c 'import json; body=open("/tmp/updated_body.md").read(); json.dump({"body": body}, open("/tmp/patch_payload.json", "w"))'
+            gh api "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" \
+              -X PATCH \
+              --input /tmp/patch_payload.json \
+              --silent \
+              && echo "Fallback: appended full report to existing comment $COMMENT_ID" \
+              || echo "Warning: failed to update existing comment"
+            exit 0
+          fi
+
+          # No existing comment — get changed file paths and post via Reviews API
           gh pr diff "$PR_NUM" --name-only > /tmp/changed_files.txt
 
           # Get HEAD commit SHA for inline comments
