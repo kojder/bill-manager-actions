@@ -7,7 +7,25 @@ Read at the start of every conversation (referenced from CLAUDE.md).
 
 ## Current Task
 
-_No active task._
+### [BM-4] Fix Groq API key format validation
+**Source:** Jira BM-4
+**Branch:** `fix/BM-4-groq-api-key-validation`
+**Status:** In Progress
+
+#### Steps
+- [x] Identify root cause — hardcoded exact key length (56 chars) in `ApiKeyValidator`
+- [x] Fix validation to accept keys of any length with `gsk_` prefix (min 20 chars)
+- [ ] Commit and push PR
+
+#### Changed classes
+- `src/main/java/com/example/bill_manager/config/ApiKeyValidator.java`
+  - Removed hardcoded `apiKey.length() != 56` check
+  - Replaced with `apiKey.length() < 20` minimum length guard
+  - Updated error message to reflect flexible format
+
+#### Notes
+- Groq changed the length of newly generated API keys — old keys (56 chars) still work, new keys differ
+- Validation now checks only `gsk_` prefix + minimum sanity length; actual auth failure returns HTTP 401
 
 <!-- Template for adding a new task:
 
