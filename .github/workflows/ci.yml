@@ -522,6 +522,7 @@ jobs:
       - name: Token Usage Summary
         if: always() && steps.claude_review.outputs.execution_file
         env:
+          GH_TOKEN: ${{ github.token }}
           EXEC_FILE: ${{ steps.claude_review.outputs.execution_file }}
           PR_NUM: ${{ github.event.pull_request.number }}
         run: |
@@ -589,13 +590,15 @@ jobs:
             echo "| Turns | $TURNS |"
             echo "| Duration | $DURATION_FMT |"
             printf "| Est. cost | \$%.2f |\n" "$COST"
-          } >> "$GITHUB_STEP_SUMMARY"
+          } | tee /tmp/token_table.md >> "$GITHUB_STEP_SUMMARY"
+
+          gh pr comment "$PR_NUM" --body-file /tmp/token_table.md
 
           mkdir -p reports
           echo "$METRICS" | jq --argjson pr "$PR_NUM" '. + {pr: $pr}' \
             > "reports/pr-${PR_NUM}-usage.json"
 
-          echo "✅ Token usage summary written to Step Summary and reports/pr-${PR_NUM}-usage.json"
+          echo "✅ Token usage summary written to Step Summary, PR comment, and reports/pr-${PR_NUM}-usage.json"
 
       - name: Upload usage metrics
         if: always() && (hashFiles('reports/**') != '')
