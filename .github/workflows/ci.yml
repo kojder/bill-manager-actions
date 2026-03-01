@@ -646,22 +646,35 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUM: ${{ github.event.pull_request.number }}
         run: |
+          GQL='mutation($id:ID!){minimizeComment(input:{subjectId:$id,classifier:OUTDATED}){minimizedComment{isMinimized}}}'
+
           ALL_CLAUDE=$(gh api "repos/${{ github.repository }}/issues/${PR_NUM}/comments" \
             --jq '[.[] | select(.user.login == "claude[bot]") | {id: .id, node_id: .node_id}]')
 
           COUNT=$(echo "$ALL_CLAUDE" | jq 'length')
-          if [ "$COUNT" -le 1 ]; then
+          if [ "$COUNT" -gt 1 ]; then
+            echo "Found $COUNT Claude comments — minimizing $((COUNT-1)) outdated one(s)"
+            echo "$ALL_CLAUDE" | jq -r '.[:-1][].node_id' | while read -r NODE_ID; do
+              gh api graphql -f query="$GQL" -f id="$NODE_ID" --silent \
+                && echo "Minimized $NODE_ID" \
+                || echo "Warning: could not minimize $NODE_ID"
+            done
+          else
             echo "Only $COUNT Claude comment(s), nothing to minimize"
-            exit 0
           fi
 
-          echo "Found $COUNT Claude comments — minimizing ${COUNT-1} outdated one(s)"
-          GQL='mutation($id:ID!){minimizeComment(input:{subjectId:$id,classifier:OUTDATED}){minimizedComment{isMinimized}}}'
-          echo "$ALL_CLAUDE" | jq -r '.[:-1][].node_id' | while read -r NODE_ID; do
-            gh api graphql -f query="$GQL" -f id="$NODE_ID" --silent \
-              && echo "Minimized $NODE_ID" \
-              || echo "Warning: could not minimize $NODE_ID"
-          done
+          STALE_TOKEN_COMMENTS=$(gh api "repos/${{ github.repository }}/issues/${PR_NUM}/comments" \
+            --jq '[.[] | select(.user.login == "github-actions[bot]") | select(.body | startswith("## Claude Code Review — Token Usage")) | .node_id]')
+
+          STALE_COUNT=$(echo "$STALE_TOKEN_COMMENTS" | jq 'length')
+          if [ "$STALE_COUNT" -gt 0 ]; then
+            echo "Found $STALE_COUNT standalone token table comment(s) to minimize"
+            echo "$STALE_TOKEN_COMMENTS" | jq -r '.[]' | while read -r NODE_ID; do
+              gh api graphql -f query="$GQL" -f id="$NODE_ID" --silent \
+                && echo "Minimized token comment $NODE_ID" \
+                || echo "Warning: could not minimize token comment $NODE_ID"
+            done
+          fi
 
       - name: Upload usage metrics
         if: always() && (hashFiles('reports/**') != '')
