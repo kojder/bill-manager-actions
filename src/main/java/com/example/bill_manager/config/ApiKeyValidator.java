@@ -45,10 +45,9 @@ public class ApiKeyValidator {
               + "Replace it with your actual API key from: https://console.groq.com/keys");
     }
 
-    // Groq API keys format: gsk_[52 characters] = 56 total length
-    if (!apiKey.startsWith("gsk_") || apiKey.length() != 56) {
+    if (!apiKey.startsWith("gsk_") || apiKey.length() < 20) {
       throw new IllegalStateException(
-          "GROQ_API_KEY format is invalid. Expected format: gsk_[52-characters]. "
+          "GROQ_API_KEY format is invalid. Expected format: gsk_[...]. "
               + "Please verify your API key from: https://console.groq.com/keys");
     }
 

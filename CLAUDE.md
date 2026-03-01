@@ -225,6 +225,15 @@ This repository uses Claude Code Actions (`anthropics/claude-code-action@v1`) fo
 
 **Note:** When running as GitHub Action for code review, always write in **English** (as specified in Language Rules).
 
+### Review Context
+
+**Before starting a code review, always read `PROGRESS.md`** to understand:
+- Which task/ticket is currently being worked on
+- Which classes were modified and why
+- Any known limitations, design decisions, or intentional trade-offs noted by the developer
+
+This prevents flagging intentional changes as issues and provides context for inline comments.
+
 ### Review Scope (Global)
 
 **DO Review** (Logic & Architecture):
