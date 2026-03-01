@@ -5,7 +5,7 @@ on:
     types: [opened, synchronize, ready_for_review, reopened, labeled]
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number }}
+  group: ci-${{ github.head_ref }}
   cancel-in-progress: true
 
 jobs:
