@@ -1,6 +1,7 @@
 package com.example.bill_manager.export;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.example.bill_manager.dto.BillAnalysisResponse;
 import com.example.bill_manager.dto.BillAnalysisResult;
@@ -106,6 +107,17 @@ class BillCsvExportServiceImplTest {
   }
 
   @Nested
+  class NullHandling {
+
+    @Test
+    void shouldThrowWhenResponseIsNull() {
+      assertThatThrownBy(() -> service.exportToCsv(null))
+          .isInstanceOf(IllegalArgumentException.class)
+          .hasMessage("Response must not be null");
+    }
+  }
+
+  @Nested
   class CsvEscaping {
 
     @Test
@@ -123,6 +135,23 @@ class BillCsvExportServiceImplTest {
           new BillAnalysisResponse(FIXED_ID, "file.pdf", analysis, FIXED_INSTANT);
       final String csv = service.exportToCsv(response);
       assertThat(csv).contains("\"Store, Inc.\"");
+    }
+
+    @Test
+    void shouldPrefixFormulaInjectionTriggerCharacters() {
+      // spotless:off
+      final BillAnalysisResult analysis =
+          new BillAnalysisResult(
+              "=SUM(A1)",
+              List.of(new LineItem("Item", BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE)),
+              BigDecimal.ONE,
+              "PLN",
+              null);
+      // spotless:on
+      final BillAnalysisResponse response =
+          new BillAnalysisResponse(FIXED_ID, "file.pdf", analysis, FIXED_INSTANT);
+      final String csv = service.exportToCsv(response);
+      assertThat(csv).contains("\"'=SUM(A1)\"");
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.example.bill_manager.dto.BillAnalysisResponse;
 import com.example.bill_manager.dto.LineItem;
 import com.example.bill_manager.dto.PurchaseCategory;
 import java.util.List;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -11,7 +12,7 @@ public class BillCsvExportServiceImpl implements BillCsvExportService {
 
   private static final char UTF8_BOM = '\uFEFF';
   private static final String DELIMITER = ",";
-  private static final String NEWLINE = "\n";
+  private static final String NEWLINE = "\r\n";
 
   @Override
   public String exportToCsv(final BillAnalysisResponse response) {
@@ -42,11 +43,15 @@ public class BillCsvExportServiceImpl implements BillCsvExportService {
         .append(DELIMITER)
         .append(quote(response.originalFileName()))
         .append(DELIMITER)
-        .append(quote(response.analyzedAt().toString()))
+        .append(quote(Objects.toString(response.analyzedAt(), "")))
         .append(DELIMITER)
         .append(quote(response.analysis().currency()))
         .append(DELIMITER)
-        .append(quote(response.analysis().totalAmount().toPlainString()))
+        .append(
+            quote(
+                response.analysis().totalAmount() != null
+                    ? response.analysis().totalAmount().toPlainString()
+                    : ""))
         .append(NEWLINE);
   }
 
@@ -90,6 +95,13 @@ public class BillCsvExportServiceImpl implements BillCsvExportService {
     if (value == null) {
       return "\"\"";
     }
-    return "\"" + value.replace("\"", "\"\"") + "\"";
+    final String safe =
+        (value.startsWith("=")
+                || value.startsWith("+")
+                || value.startsWith("-")
+                || value.startsWith("@"))
+            ? "'" + value
+            : value;
+    return "\"" + safe.replace("\"", "\"\"") + "\"";
   }
 }
