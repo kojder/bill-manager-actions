@@ -71,13 +71,17 @@ Each workflow declares minimum required GitHub token permissions:
 
 ### CI Pipeline (`ci.yml`)
 
+The workflow declares `permissions: {}` at the top level — a **deny-all default** (no implicit permissions). Each job explicitly grants only what it needs:
+
 | Job | `contents` | `pull-requests` | `issues` | `id-token` |
 |-----|:---------:|:---------------:|:--------:|:----------:|
 | enrich-description | read | write | — | — |
-| checkstyle | — | — | — | — |
-| test | — | — | — | — |
+| checkstyle | read | — | — | — |
+| test | read | — | — | — |
 | claude-review | read | write | — | write |
 | cleanup-label | — | write | — | — |
+
+The deny-all default means even `contents: read` must be declared explicitly — `checkstyle` and `test` jobs need it for repository checkout.
 
 ### Interactive Claude (`claude.yml`)
 
@@ -212,6 +216,6 @@ Claude Code Action enforces that the workflow file invoking it (`ci.yml`) must b
 
 ---
 
-*Last updated: 2026-02-26*
+*Last updated: 2026-03-01*
 
 *Sources: `.github/workflows/ci.yml` (permissions, allowedTools), `.github/workflows/claude.yml` (permissions, allowedTools), `.github/workflows/pattern-police.yml` (permissions, allowedTools), `docs/claude-actions-context.md` (Security Considerations, Limitations)*

@@ -32,7 +32,13 @@ The pipeline triggers on `pull_request` events with these types:
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened, labeled]
+
+concurrency:
+  group: ci-${{ github.head_ref }}
+  cancel-in-progress: true
 ```
+
+The `concurrency` block ensures that if a new push arrives while a pipeline run is in progress, the older run is **automatically cancelled**. This prevents multiple simultaneous reviews of the same PR and reduces wasted CI minutes. The group key uses the branch name (`github.head_ref`) so only runs for the same branch cancel each other.
 
 | Event Type | When It Fires | What Runs |
 |-----------|---------------|-----------|
@@ -196,10 +202,12 @@ sequenceDiagram
 
 **Purpose:** Populate the PR body with task context from `ai/tasks.md`.
 
+**Timeout:** 5 minutes
+
 **Steps:**
 1. **Checkout** — Standard repository checkout
-2. **Extract task number** — Regex `task-([0-9]+)` on the branch name
-3. **Build task content** — Parse `ai/tasks.md` for the task's title, description, scope, review rules, and expected review points
+2. **Extract task number** — Regex `task-([0-9]+)` on the branch name (or Jira key `[A-Z][A-Z0-9]*-[0-9]+` as fallback)
+3. **Build task content** — Delegates to `.github/scripts/build-task-content.sh` (extracts from `ai/tasks.md`) or `.github/scripts/jira_parse.py` (fetches from Jira REST API)
 4. **Update PR description** — Replace `<!-- TASK_PLACEHOLDER -->` in the PR body with the extracted content
 
 **Graceful degradation:**
@@ -216,9 +224,11 @@ For the full enrichment algorithm, see [PR Enrichment and Task Workflow](06-PR-E
 
 **Purpose:** Enforce code formatting (Spotless) and Google Java Style (Checkstyle).
 
+**Timeout:** 10 minutes
+
 **Steps:**
 1. **Checkout** repository
-2. **Set up JDK 17** (Temurin distribution, Maven cache enabled)
+2. **Set up JDK 17** — via `.github/actions/setup-java-maven` composite action (Temurin, Maven cache)
 3. **Check formatting (Spotless)** — `./mvnw spotless:check` (Google Java Format, 2-space indent)
 4. **Run Checkstyle** — `./mvnw checkstyle:check`
 
@@ -232,9 +242,11 @@ For the full Checkstyle configuration, see [Checkstyle Configuration](10-Checkst
 
 **Purpose:** Run the JUnit 5 test suite.
 
+**Timeout:** 15 minutes
+
 **Steps:**
 1. **Checkout** repository
-2. **Set up JDK 17** (Temurin distribution, Maven cache enabled)
+2. **Set up JDK 17** — via `.github/actions/setup-java-maven` composite action
 3. **Run Tests** — `./mvnw test`
 
 **Blocking behavior:** If any test fails, the pipeline stops. Claude review will not run on code with failing tests.
@@ -245,11 +257,14 @@ For the full Checkstyle configuration, see [Checkstyle Configuration](10-Checkst
 
 **Purpose:** Automated AI code review with structured reporting and token usage tracking.
 
+**Timeout:** 20 minutes
+
 **Steps:**
 1. **Checkout** with full history (`fetch-depth: 0`) for comprehensive diff analysis
 2. **Claude Code Action** — Invokes `anthropics/claude-code-action@v1` with a detailed prompt
-3. **Token Usage Summary** — Parses the execution output file, sums token usage across all turns, writes a summary table to GitHub Step Summary and saves metrics as `reports/pr-{N}-usage.json`
-4. **Upload report** — Saves the structured review report and token usage metrics as a GitHub Actions artifact
+3. **Post Review (fallback)** — If Claude's inline comment posting was non-deterministic, this step parses the execution file output, extracts `[W-N]`/`[C-N]` findings using `.github/scripts/parse_review_findings.py`, and posts them via the GitHub PR Reviews API. Falls back to `gh pr comment` if the Reviews API fails. Includes duplicate guard to skip if Claude already posted.
+4. **Token Usage Summary** — Parses the execution output file, sums token usage across all turns, writes a summary table to GitHub Step Summary and saves metrics as `reports/pr-{N}-usage.json`
+5. **Upload report** — Saves token usage metrics as a GitHub Actions artifact
 
 **Key configuration:**
 - Allowed tools: `Glob`, `Grep`, `Read`, inline comments, `gh pr` commands, `Write` (for reports)
@@ -275,9 +290,26 @@ For the full review prompt and report format, see [Claude Code Review Job](05-Cl
 
 ---
 
+### Extracted Script Files
+
+To reduce inline YAML complexity, several scripts are maintained as separate files under `.github/scripts/`:
+
+| File | Used By | Purpose |
+|------|---------|---------|
+| `build-task-content.sh` | enrich-description | Parse `ai/tasks.md` and build task context block |
+| `jira_parse.py` | enrich-description | Fetch and parse Jira issue via REST API (ADF format) |
+| `post-review-fallback.sh` | claude-review | Orchestrate fallback review posting logic |
+| `parse_review_findings.py` | claude-review | Extract `[W-N]`/`[C-N]` findings and resolve file paths for GitHub Reviews API |
+
+The `.github/actions/setup-java-maven/` composite action deduplicates the JDK 17 + Maven cache setup step shared by `checkstyle` and `test` jobs.
+
+---
+
 ### Job 5: cleanup-label
 
 **Purpose:** Remove the `rerun` label so it can be reused.
+
+**Timeout:** 5 minutes
 
 **Runs only when:** `github.event.action == 'labeled' && github.event.label.name == 'rerun'`
 
@@ -310,13 +342,17 @@ Claude Code Action validates that `ci.yml` on the PR branch matches the version 
 
 ## Permissions Summary
 
+The workflow declares `permissions: {}` at the top level — a **deny-all default** that blocks all permissions unless explicitly granted at the job level. Each job then specifies only the minimum permissions it requires:
+
 | Job | `contents` | `pull-requests` | `issues` | `id-token` |
 |-----|-----------|-----------------|----------|------------|
 | enrich-description | read | write | — | — |
-| checkstyle | — | — | — | — |
-| test | — | — | — | — |
+| checkstyle | read | — | — | — |
+| test | read | — | — | — |
 | claude-review | read | write | — | write |
 | cleanup-label | — | write | — | — |
+
+**Why `contents: read` on checkstyle and test?** These jobs need to check out the repository. The deny-all default means even `contents: read` must be explicit.
 
 **Why `id-token: write`?** Required by the Claude Code Action for OAuth token exchange with the Anthropic API.
 
@@ -334,6 +370,6 @@ Claude Code Action validates that `ci.yml` on the PR branch matches the version 
 
 ---
 
-*Last updated: 2026-02-22*
+*Last updated: 2026-03-01*
 
 *Sources: `.github/workflows/ci.yml` (complete file), `CLAUDE.md` (pipeline diagram)*

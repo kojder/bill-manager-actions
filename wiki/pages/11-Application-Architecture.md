@@ -63,6 +63,11 @@ com.example.bill_manager/
 │   ├── PdfConversionServiceImpl.java # Apache PDFBox page rendering
 │   └── PdfConversionException.java  # Custom exception with ErrorCode enum
 │
+├── export/                          # CSV export
+│   ├── BillCsvExportService.java    # Interface
+│   ├── BillCsvExportServiceImpl.java # RFC 4180 CSV generation, formula injection guard
+│   └── BillExportController.java   # GET /api/bills/{id}/export/csv
+│
 ├── dto/                             # Data Transfer Objects (Java Records)
 │   ├── BillAnalysisResult.java      # LLM response: merchant, items, total, categories
 │   ├── BillAnalysisResponse.java    # API response: id, filename, analysis
@@ -79,6 +84,7 @@ Each package maps to a path-specific review rule set in CLAUDE.md:
 - `config/` → Config Module rules (secrets, env separation)
 - `upload/` → Upload Module rules (MIME validation, path traversal)
 - `ai/` → AI Module rules (timeout, retry, structured output)
+- `export/` → no path-specific rules (CSV formatting, output generation)
 - `health/` → no path-specific rules (simple liveness probe)
 
 ---
@@ -103,6 +109,10 @@ graph TD
     STORE -->|"found"| OK["200 OK"]
     STORE -->|"not found"| NOT_FOUND["404 Not Found"]
 
+    EXPORT["GET /api/bills/{id}/export/csv"] --> STORE
+    STORE -->|"found"| CSV["text/csv download<br/><i>RFC 4180, UTF-8</i>"]
+    STORE -->|"not found"| EXPORT_404["404 Not Found"]
+
     HEALTH["GET /api/health"] --> HEALTH_OK["200 OK<br/><i>Liveness probe</i>"]
 ```
 
@@ -114,6 +124,7 @@ graph TD
 |----------|--------|-------------|----------|
 | `/api/bills/upload` | POST | Upload bill file, trigger AI analysis | 201 Created |
 | `/api/bills/{id}` | GET | Retrieve analysis result by UUID | 200 OK / 404 |
+| `/api/bills/{id}/export/csv` | GET | Download analysis result as CSV file | 200 text/csv / 404 |
 | `/api/health` | GET | Liveness probe (application running) | 200 OK |
 | `/` | GET | Upload form (static HTML) | 200 OK |
 
@@ -241,6 +252,6 @@ For detailed technology decisions, see `ai/tech-stack.md` in the repository.
 
 ---
 
-*Last updated: 2026-02-23*
+*Last updated: 2026-03-01*
 
 *Sources: `ai/tech-stack.md`, `ai/api-plan.md`, `ai/prd.md`, source code tree*

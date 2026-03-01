@@ -595,9 +595,9 @@
 
 ---
 
-### Task 19: Structured SLF4J Logging Across Application
+### Task 19: Structured SLF4J Logging Across Application ✅ COMPLETED
 
-**Status:** In Progress
+**Status:** Merged to master (PR #28)
 
 **Description:** Add consistent SLF4J logging across all application layers. 5 out of 8 service/controller classes had zero logging. `GlobalExceptionHandler` logged only 1 of 8 exception types. The critical upload pipeline (upload → validation → preprocessing → AI → store) was invisible in logs.
 
@@ -633,12 +633,103 @@
 
 ---
 
+---
+
+## Phase 7: Jira Tickets
+
+### BM-3: CSV Export for Bill Analysis Results ✅ COMPLETED
+
+**Status:** Merged to master (PR #35)
+
+**Description:** Add CSV download endpoint for bill analysis results. `GET /api/bills/{id}/export/csv` returns a UTF-8 encoded RFC 4180 CSV with merchant info, line items, and category tags. Download CSV button added to the frontend results view.
+
+**Scope:**
+- New: `src/main/java/.../export/BillCsvExportService.java` (interface)
+- New: `src/main/java/.../export/BillCsvExportServiceImpl.java` — RFC 4180 CRLF endings, formula injection guard (neutralizes `=`, `+`, `-`, `@` prefix chars in cells)
+- New: `src/main/java/.../export/BillExportController.java` — `GET /api/bills/{id}/export/csv`
+- Modified: `src/main/resources/static/index.html` — "Download CSV" button in results view
+- New: `src/test/java/.../export/BillCsvExportServiceImplTest.java` — 12 tests (happy path, null handling, formula injection, escaping)
+- New: `src/test/java/.../export/BillExportControllerTest.java` — 8 tests (200 OK, 404, Content-Disposition, CSV content)
+
+**Claude review:** CLAUDE.md review section (global)
+
+**Expected review points:**
+- [x] RFC 4180 compliant CSV (CRLF line endings, proper quoting)
+- [x] Formula injection protection (neutralize `=`, `+`, `-`, `@` prefix chars)
+- [x] Null-safe handling (null totalAmount, null analyzedAt)
+- [x] Correct Content-Disposition header for file download
+
+**Implementation notes:**
+- `text/csv; charset=UTF-8` + `Content-Disposition: attachment; filename="bill-{id}.csv"` headers
+- Formula injection: cells starting with `=`, `+`, `-`, `@` are quoted and prefixed with `'` (apostrophe)
+- `Objects.toString(value, "N/A")` for null-safe totalAmount and analyzedAt
+- `BillResultStore.findById()` returns `Optional<BillAnalysisResponse>` — 404 mapped to `AnalysisNotFoundException`
+
+**Size:** M
+
+---
+
+### BM-4: Relax Groq API Key Length Validation ✅ COMPLETED
+
+**Status:** Merged to master (PR #36)
+
+**Description:** Groq changed the length of newly generated API keys. The hardcoded exact-length check (56 chars) in `ApiKeyValidator` rejected valid new keys. Relaxed validation to accept any key with `gsk_` prefix and minimum 20 characters total length.
+
+**Scope:**
+- Modified: `src/main/java/.../config/ApiKeyValidator.java` — removed `apiKey.length() != 56` check, replaced with `apiKey.length() < 20` minimum guard
+
+**Claude review:** **CLAUDE.md Config Module review rules**
+
+**Expected review points:**
+- [x] No hardcoded format assumptions about external API key formats
+- [x] Fail-fast still works — `@PostConstruct` validation retained
+- [x] Error message updated to reflect flexible format
+
+**Implementation notes:**
+- Root cause: Groq migrated to longer API keys; old 56-char keys still work, new keys differ in length
+- New validation: `gsk_` prefix (format check) + min 20 chars (sanity guard)
+- Actual auth failure surfaces as HTTP 401 from Groq — validation is a startup guard only
+
+**Size:** XS
+
+---
+
+## Phase 8: CI/CD Best Practices
+
+### CI-1: Concurrency Group and Deny-All Permissions ✅ COMPLETED
+
+**Status:** Merged to master (various commits on master)
+
+**Description:** CI pipeline hardening: auto-cancel in-progress runs on new push, deny-all permissions at workflow level with explicit per-job grants, `timeout-minutes` on every job, and extracted inline scripts to `.github/scripts/`.
+
+**Scope:**
+- Modified: `.github/workflows/ci.yml`:
+  - Added `concurrency: group: ci-${{ github.head_ref }}, cancel-in-progress: true`
+  - Added `permissions: {}` at workflow level (deny-all default)
+  - Added `timeout-minutes` to all jobs (5/10/15/20/5 min)
+  - Added `contents: read` to `checkstyle` and `test` jobs
+- New: `.github/scripts/build-task-content.sh` — extracted from inline YAML (tasks.md parsing)
+- New: `.github/scripts/jira_parse.py` — extracted from inline YAML (Jira ADF parsing)
+- New: `.github/scripts/post-review-fallback.sh` — extracted fallback review posting logic
+- New: `.github/scripts/parse_review_findings.py` — extracted finding parser (GitHub Reviews API)
+- New: `.github/actions/setup-java-maven/action.yml` — composite action for JDK 17 + Maven cache setup (DRY)
+
+**Implementation notes:**
+- Concurrency group uses branch name (`head_ref`) so only same-branch runs cancel each other
+- `permissions: {}` follows OWASP GitHub Actions best practices — least privilege by default
+- Extracted scripts eliminate `heredoc` indentation issues in YAML `run:` blocks
+- Composite action deduplicates JDK setup between `checkstyle` and `test` jobs
+
+**Size:** M
+
+---
+
 ## Claude Code Actions Review Mapping
 
 | CLAUDE.md review section | Tasks | Key review points |
 |--------------------------|-------|-------------------|
-| Global review scope | 2, 3, 5, 10, 11, 13, 14, 16, 17, 18, 19 | Architecture, Records, REST conventions, workflow quality, CI security, UI, logging |
-| Config Module rules | 4, 12 | Secrets, env separation, configurable URLs, Jira API secrets (source detection, graceful fallback) |
+| Global review scope | 2, 3, 5, 10, 11, 13, 14, 16, 17, 18, 19, BM-3, CI-1 | Architecture, Records, REST conventions, workflow quality, CI security, UI, logging, CSV export |
+| Config Module rules | 4, 12, BM-4 | Secrets, env separation, configurable URLs, Jira API secrets, API key validation |
 | Upload Module rules | 6, 7, 8, 15 | MIME validation, size limits, path traversal, preprocessing, PDF conversion |
 | AI Module rules | 9, 15, 18 | Timeout, retry, exponential backoff, structured output, multi-image, category enum |
 

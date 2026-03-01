@@ -76,6 +76,7 @@ The application starts on `http://localhost:8080`. Available endpoints:
 - `http://localhost:8080/` — Upload form (simple HTML UI)
 - `POST http://localhost:8080/api/bills/upload` — Upload a bill (API)
 - `GET http://localhost:8080/api/bills/{id}` — Retrieve analysis result
+- `GET http://localhost:8080/api/bills/{id}/export/csv` — Download result as CSV
 - `GET http://localhost:8080/api/health` — Liveness probe
 
 ---
@@ -273,6 +274,6 @@ See [Pattern Police](08-Pattern-Police) for details on what it checks.
 
 ---
 
-*Last updated: 2026-02-22*
+*Last updated: 2026-03-01*
 
 *Sources: `CLAUDE.md` (Code Conventions, Build Commands, Git Commit Guidelines), `ai/tasks.md` (Rules section)*

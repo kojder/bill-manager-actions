@@ -152,15 +152,27 @@ sequenceDiagram
     CCA->>GH: Post PR summary comment (incl. skill report appendix)
     CCA-->>CI: Action completes
 
+    Note over CI: Two-layer posting — Claude posts directly (~33% reliable)<br/>Fallback step always runs to ensure review is visible
+    CI->>GH: Check for existing review (duplicate guard)
+    alt No review posted by Claude
+        CI->>CI: Parse execution file → extract [W-N]/[C-N] findings
+        CI->>GH: Post via GitHub PR Reviews API (inline + summary)
+    end
+
     CI->>ART: Upload token usage artifact
 ```
+
+**Two-layer posting architecture:** Claude Code Action in agent mode does not have a system prompt — the `prompt:` input is the only instruction. After 13+ analysis turns, Claude's tool-posting becomes non-deterministic. The fallback step (`.github/scripts/post-review-fallback.sh`) ensures the review is always visible:
+
+1. **Claude posts directly** (works ~33% of runs) — via `mcp__github_inline_comment__create_inline_comment` tool
+2. **Fallback step** (always runs after Claude action) — checks for existing review comments (duplicate guard), extracts findings via `.github/scripts/parse_review_findings.py`, posts via GitHub PR Reviews API, falls back to simple `gh pr comment` if API fails
 
 **What Claude produces:**
 
 | Output | Where | Format |
 |--------|-------|--------|
 | Inline comments | On specific PR lines | GitHub inline review comments |
-| PR summary | Top-level PR comment (sticky) | Markdown comment with skill report appendix |
+| PR summary | Top-level PR comment | Markdown comment with skill report appendix |
 | Token usage | `reports/pr-{N}-usage.json` | JSON artifact |
 
 ---
@@ -173,9 +185,9 @@ The review produces two main outputs:
 
 Posted on specific PR lines for code issues found in the diff. When the `spring-java-reviewer` skill is active, its Critical and Warning findings are posted as inline comments.
 
-### 2. Summary Comment (Sticky)
+### 2. Summary Comment
 
-A single top-level PR comment (updated on each push via `use_sticky_comment: true`) containing:
+A top-level PR comment containing:
 
 - **Verdict** — approve / request changes
 - **Key findings** — count and one-line summary per finding
@@ -314,7 +326,8 @@ claude_args: |
 
 Additional configuration:
 - `--max-turns 35` — limits the number of agentic turns to control token consumption (extra headroom for skill invocation)
-- `use_sticky_comment: true` — edits a single PR comment instead of posting new ones on each push
+
+> **Note:** `use_sticky_comment` is vestigial in `claude-code-action@v1` — the parameter exists in the YAML but is not implemented. The fallback step handles reliable posting instead.
 
 **What Claude CANNOT do in this job:**
 - Edit or write source files (no `Edit` or `Write` tools)
@@ -336,6 +349,6 @@ For a full comparison of tool restrictions across all workflows, see [Security a
 
 ---
 
-*Last updated: 2026-02-26*
+*Last updated: 2026-03-01*
 
 *Sources: `.github/workflows/ci.yml` (claude-review job), `CLAUDE.md` (Review Scope), `.claude/skills/spring-java-reviewer/` (review skill definition), `ai/tasks.md` (expected review points examples)*
